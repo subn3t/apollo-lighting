@@ -249,8 +249,8 @@
     </tr>
     <tr>
       <td>Door sensor</td>
-      <td>TAKHRWOD MC-31B reed (Normally&nbsp;Open)</td>
-      <td>Closes when magnet aligned. Polarity is inverted by the relay's <code>NC</code> output &mdash; see &sect;&nbsp;4.</td>
+      <td>TAKHRWOD MC-31B reed (form C: COM / NC / NO)</td>
+      <td>Wire uses <strong>COM + NC</strong> per bench check &mdash; the NC contact is closed while the magnet is aligned (door shut). Leave <code>NO</code> unlanded. See &sect;&nbsp;4.</td>
     </tr>
     <tr>
       <td>Enclosure</td>
@@ -365,11 +365,11 @@
     <!-- Input side (left) -->
     <text x="628" y="145" font-family="Consolas, Menlo, monospace" font-size="10" fill="#4a4f57" letter-spacing="0.6">INPUT</text>
     <circle cx="620" cy="160" r="4" fill="#b53127"/>
-    <text x="632" y="163" font-family="Consolas, Menlo, monospace" font-size="10" fill="#1c1f24">VCC</text>
+    <text x="632" y="163" font-family="Consolas, Menlo, monospace" font-size="10" fill="#1c1f24">DC+</text>
     <circle cx="620" cy="185" r="4" fill="#7a6a3d"/>
     <text x="632" y="188" font-family="Consolas, Menlo, monospace" font-size="10" fill="#1c1f24">IN</text>
     <circle cx="620" cy="210" r="4" fill="#1c1f24"/>
-    <text x="632" y="213" font-family="Consolas, Menlo, monospace" font-size="10" fill="#1c1f24">GND</text>
+    <text x="632" y="213" font-family="Consolas, Menlo, monospace" font-size="10" fill="#1c1f24">DC−</text>
 
     <!-- coil symbol (schematic) -->
     <g stroke="#7a3d36" stroke-width="1.4" fill="none">
@@ -411,29 +411,42 @@
 
   <!-- ===== Reed switch ===== -->
   <g>
-    <rect x="230" y="330" width="200" height="90" rx="4"
+    <rect x="230" y="330" width="200" height="115" rx="4"
           fill="#e7ecdf" stroke="#5a7050" stroke-width="1.4"/>
     <text x="330" y="352" text-anchor="middle"
           font-family="Helvetica Neue, Arial" font-size="12" fill="#3d5240" font-weight="700"
           letter-spacing="0.4">TAKHRWOD MC-31B</text>
-    <text x="330" y="367" text-anchor="middle"
-          font-family="Consolas, Menlo, monospace" font-size="9" fill="#4a4f57">reed switch (NO)</text>
-
-    <!-- Frame half -->
-    <rect x="252" y="380" width="52" height="24" rx="2"
+    <!-- Frame half (contains the reed switch body) -->
+    <rect x="240" y="378" width="80" height="28" rx="2"
           fill="#fff" stroke="#5a7050" stroke-width="1.2"/>
-    <text x="278" y="396" text-anchor="middle"
-          font-family="Consolas, Menlo, monospace" font-size="8" fill="#4a4f57">FRAME</text>
+    <text x="280" y="373" text-anchor="middle"
+          font-family="Consolas, Menlo, monospace" font-size="8" fill="#4a4f57">FRAME (reed)</text>
 
     <!-- Door half (magnet) -->
-    <rect x="356" y="380" width="52" height="24" rx="2"
+    <rect x="356" y="378" width="60" height="28" rx="2"
           fill="#fff" stroke="#5a7050" stroke-width="1.2"/>
-    <text x="382" y="396" text-anchor="middle"
-          font-family="Consolas, Menlo, monospace" font-size="8" fill="#4a4f57">DOOR ◈</text>
+    <text x="386" y="373" text-anchor="middle"
+          font-family="Consolas, Menlo, monospace" font-size="8" fill="#4a4f57">DOOR ◈ (magnet)</text>
 
-    <!-- reed terminals -->
-    <circle cx="252" cy="392" r="2.8" fill="#b53127"/>
-    <circle cx="308" cy="392" r="2.8" fill="#7a6a3d"/>
+    <!-- Three terminals: NC (used, mustard-sense leaves here) · COM (used, red +24V arrives here) · NO (unused) -->
+    <!-- NC terminal (left) — carries sense wire to relay IN -->
+    <circle cx="252" cy="392" r="2.8" fill="#7a6a3d"/>
+    <text x="252" y="416" text-anchor="middle"
+          font-family="Consolas, Menlo, monospace" font-size="9" fill="#1c1f24" font-weight="700">NC</text>
+    <text x="252" y="430" text-anchor="middle"
+          font-family="Consolas, Menlo, monospace" font-size="8" fill="#7a6a3d">→ relay IN</text>
+
+    <!-- COM terminal (right) — tied to +24 V rail -->
+    <circle cx="308" cy="392" r="2.8" fill="#b53127"/>
+    <text x="308" y="416" text-anchor="middle"
+          font-family="Consolas, Menlo, monospace" font-size="9" fill="#1c1f24" font-weight="700">COM</text>
+    <text x="308" y="430" text-anchor="middle"
+          font-family="Consolas, Menlo, monospace" font-size="8" fill="#b53127">→ +24 V rail</text>
+
+    <!-- NO terminal (unused) — small greyed dot on top edge -->
+    <circle cx="280" cy="378" r="2.4" fill="#b7ad97"/>
+    <text x="280" y="368" text-anchor="middle"
+          font-family="Consolas, Menlo, monospace" font-size="8" fill="#b7ad97">NO (unused)</text>
   </g>
 
   <!-- +24V drop from rail down to the reed frame terminal (single clean L) -->
@@ -499,14 +512,16 @@
 
 <h2><span class="num">4</span> Reed polarity note</h2>
 <p>
-  The TAKHRWOD MC-31B is a <strong>Normally-Open</strong> reed: contact closes when the magnet is
-  aligned. Wanted behavior is the opposite — closed door should mean <em>off</em>. The relay's
-  <code>NC</code> output does that inversion for free:
+  The MC-31B is a form-C sensor (COM / NC / NO). Bench-verified with a multimeter: on this unit,
+  the <code>NC</code> contact is <em>closed while the magnet is aligned</em> (door shut) and opens
+  when the magnet leaves (door open). Wire uses <code>COM</code> + <code>NC</code>; leave
+  <code>NO</code> unlanded. The relay's own <code>NC</code> output then inverts the sense so that
+  door-closed &rarr; strip-off:
 </p>
 
 <table>
   <thead>
-    <tr><th>Door</th><th>Reed</th><th>Relay coil</th><th>NC contact</th><th>Strip</th></tr>
+    <tr><th>Door</th><th>Reed NC contact</th><th>Relay coil</th><th>Relay NC contact</th><th>Strip</th></tr>
   </thead>
   <tbody>
     <tr><td>Closed (magnet aligned)</td><td>Closed</td><td>Energized</td><td>Open</td><td class="mono">OFF</td></tr>
@@ -517,7 +532,7 @@
 <div class="callout">
   <strong>If IN floats when the reed is open:</strong> some opto-isolated boards leave the IN pin
   unterminated in HIGH-trigger mode, which can chatter the coil. If that happens on the bench,
-  add a <strong>10 kΩ pull-down from IN to GND</strong> — reed closed still pulls IN firmly to
+  add a <strong>10 kΩ pull-down from IN to DC−</strong> — reed closed still pulls IN firmly to
   +24&nbsp;V, reed open holds IN at 0&nbsp;V.
 </div>
 
@@ -525,11 +540,12 @@
 <ol>
   <li>
     <strong>Wire the DC rails to the relay module first, with no strip attached.</strong>
-    Barrel jack <code>+</code> → relay <code>VCC</code>. Barrel jack <code>−</code> → relay <code>GND</code>.
+    Barrel jack <code>+</code> → relay <code>DC+</code>. Barrel jack <code>−</code> → relay <code>DC−</code>.
   </li>
   <li>
     <strong>Wire the reed as the IN driver.</strong> Tap a second lead off the <code>+24 V</code> rail
-    to one reed terminal; the other reed terminal to relay <code>IN</code>.
+    to the reed's <code>COM</code> terminal; connect the reed's <code>NC</code> to relay <code>IN</code>.
+    Leave the reed's <code>NO</code> unlanded.
   </li>
   <li>
     <strong>Plug in the brick.</strong> Sweep the magnet toward and away from the reed body:
@@ -537,9 +553,9 @@
     The board's power LED lights on plug-in; the relay LED tracks the coil state.
   </li>
   <li>
-    <strong>Verify with a multimeter</strong> (continuity mode) across relay <code>COM ↔ NC</code>:
-    open with magnet aligned, closed with magnet away. If reversed, re-check the trigger jumper —
-    LOW trigger inverts the sense.
+    <strong>Verify with a multimeter</strong> (continuity mode) across the <em>relay's</em>
+    <code>COM ↔ NC</code>: open with magnet aligned, closed with magnet away. If reversed, re-check
+    the trigger jumper — LOW trigger inverts the sense.
   </li>
   <li>
     <strong>Now attach the strip.</strong> Cut a ~30&nbsp;cm test length from reel stock; tie
