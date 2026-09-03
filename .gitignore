@@ -1,0 +1,38 @@
+# PlatformIO build artifacts
+.pio/
+.pioenvs/
+.piolibdeps/
+.clang_complete
+.gcc-flags.json
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.code-workspace
+
+# macOS
+.DS_Store
+
+# Editor swaps / backups
+*.swp
+*.swo
+*~
+
+# Claude Code local state (personal paths, per-machine permissions)
+.claude/
+
+# Retired docs (superseded by BACKPLATE.html per CLAUDE.md)
+WIRING.md
+
+# Personal / dev-noise artifacts not referenced by any doc
+amazon-1.png
+amazon-2.png
+cart.png
+shopping-cart-1.png
+shopping-cart-2.png
+shopping-cart-3.png
+shopping-cart-4.png
+overlapping-text.png
+cut-off-text.png
+

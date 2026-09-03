@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apollo Lighting — Backplate Build Guide</title>
+<style>
+  :root {
+    --bg: #f7f5ef;
+    --ink: #1c1f24;
+    --ink-soft: #4a4f57;
+    --rule: #d8d4c8;
+    --paper: #fff;
+    --accent: #1a3d6e;
+    --accent-soft: #e3eaf2;
+    --ac-red: #b53127;
+    --plus24: #2a2d33;
+    --pgnd: #5a5d63;
+    --sgnd: #7d8189;
+    --mosfet-bg: #d8e6e6;
+    --mosfet-line: #4d6b6b;
+    --esp-bg: #d6e0ec;
+    --esp-line: #3a5a7a;
+    --buck-bg: #f1e0b5;
+    --buck-line: #a47a2a;
+    --psu-bg: #f0ece2;
+    --expander-bg: #dde6d4;
+    --expander-line: #5a7050;
+    --display-blue: #2563a8;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 30px 80px;
+    line-height: 1.55;
+  }
+
+  header {
+    border-bottom: 3px solid var(--accent);
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+  }
+  header h1 {
+    margin: 0;
+    color: var(--accent);
+    font-size: 2em;
+    letter-spacing: 0.5px;
+  }
+  header .subtitle {
+    color: var(--ink-soft);
+    font-size: 1.05em;
+    margin-top: 6px;
+  }
+  header .meta {
+    font-family: 'Consolas', 'Menlo', monospace;
+    font-size: 0.85em;
+    color: var(--ink-soft);
+    margin-top: 4px;
+  }
+
+  h2 {
+    color: var(--accent);
+    font-size: 1.35em;
+    margin-top: 2.2em;
+    margin-bottom: 0.6em;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 4px;
+  }
+  h2 .num {
+    display: inline-block;
+    background: var(--accent);
+    color: white;
+    font-size: 0.75em;
+    padding: 2px 9px;
+    border-radius: 3px;
+    margin-right: 10px;
+    vertical-align: middle;
+  }
+
+  h3 { color: var(--ink); font-size: 1.05em; margin-top: 1.4em; margin-bottom: 0.4em; }
+
+  code, .mono { font-family: 'Consolas', 'Menlo', monospace; font-size: 0.95em; }
+
+  /* ===== Diagram ===== */
+  .stage {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 46px 46px 30px;
+    margin: 20px auto;
+    position: relative;
+    width: fit-content;
+  }
+
+  /* enclosure interior — 305 x 305 mm at 2 px/mm */
+  .enclosure {
+    position: relative;
+    width: 610px;
+    height: 610px;
+    border: 2px dashed #9a958a;
+    border-radius: 4px;
+    background: #efece3;
+  }
+  .enc-tag, .bp-tag {
+    position: absolute;
+    font-family: 'Consolas', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    letter-spacing: 0.3px;
+    z-index: 6;
+  }
+  .enc-tag { left: 7px; top: 5px; }
+  .bp-tag  { left: 6px; bottom: 5px; }
+
+  /* backplate — 249 x 249 mm (9.8 in) at 2 px/mm, centred in the enclosure */
+  .backplate {
+    position: absolute;
+    left: 56px;
+    top: 56px;
+    width: 498px;
+    height: 498px;
+    background:
+      repeating-linear-gradient(0deg, transparent 0 49px, rgba(0,0,0,.05) 49px 50px),
+      repeating-linear-gradient(90deg, transparent 0 49px, rgba(0,0,0,.05) 49px 50px),
+      #f4f1e8;
+    border: 2px solid #2c2c2c;
+    border-radius: 3px;
+  }
+
+  /* wall notes — sit in the stage padding around the enclosure */
+  .wnote {
+    position: absolute;
+    font-family: 'Consolas', monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1.3;
+    z-index: 6;
+  }
+
+  .comp {
+    position: absolute;
+    border: 1.5px solid var(--ink);
+    background: var(--paper);
+    padding: 5px 7px;
+    font-size: 11px;
+    line-height: 1.25;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .comp .label { font-weight: 700; }
+  .comp .sub { font-size: 9px; color: var(--ink-soft); margin-top: 2px; }
+  .comp .terms {
+    font-family: 'Consolas', monospace;
+    font-size: 9px;
+    color: var(--ink-soft);
+    margin-top: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .comp.psu { background: var(--psu-bg); }
+  .comp.strip-24v   { background: #ffe7bf; border: 1.5px dashed #b8842a; text-align: center; font-size: 10px; font-weight: 600; }
+  .comp.strip-pgnd  { background: #d4d2cb; border: 1.5px dashed #5a5d63; text-align: center; font-size: 10px; font-weight: 600; }
+  .comp.strip-sgnd  { background: #dde2ec; border: 1.5px dashed #5a6b85; text-align: center; font-size: 10px; font-weight: 600; }
+  .comp.mosfet { background: var(--mosfet-bg); border-color: var(--mosfet-line); }
+  .comp.buck   { background: var(--buck-bg); border-color: var(--buck-line); }
+  .comp.esp    { background: var(--esp-bg); border-color: var(--esp-line); }
+  .comp.led-drv { background: #ead8e3; border-color: #6b3a55; }
+  .comp.expander { background: var(--expander-bg); border-color: var(--expander-line); }
+  .comp.pwrblk { background: #ffe7bf; border-color: #b8842a; }
+  .comp.sigblk { background: #dde2ec; border-color: #5a6b85; }
+  .comp.rot .label::after { content: ' ⟳'; color: var(--ink-soft); font-weight: 400; }
+  .rot-key { color: var(--ink-soft); font-weight: 700; }
+  .comp .orient {
+    font-family: 'Consolas', monospace;
+    font-size: 8.5px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-top: 5px;
+    padding-top: 3px;
+    border-top: 1px dotted var(--rule);
+  }
+
+  /* I2C bus indicator — dashed line from ESP32 → off-board to display on door */
+  .i2c-trace {
+    position: absolute;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--display-blue) 0 5px,
+      transparent 5px 9px
+    );
+    height: 2px;
+    z-index: 3;
+    pointer-events: none;
+  }
+  .i2c-label {
+    position: absolute;
+    font-family: 'Consolas', monospace;
+    font-size: 9px;
+    color: var(--display-blue);
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    z-index: 3;
+    background: var(--paper);
+    padding: 1px 3px;
+  }
+
+  /* star-ground bridge — visual indicator only; the real wire bridges Power GND → Signal GND */
+  .star-bridge {
+    position: absolute;
+    left: 32px;
+    top: 261px;
+    width: 6px;
+    height: 17px;
+    background: var(--ac-red);
+    z-index: 4;
+  }
+  .star-bridge::after {
+    content: '★ to Signal GND ↓';
+    position: absolute;
+    left: 10px;
+    top: 2px;
+    color: var(--ac-red);
+    font-size: 9.5px;
+    white-space: nowrap;
+    font-family: 'Consolas', monospace;
+    font-weight: 700;
+  }
+
+  /* annotations outside the backplate */
+  .annot {
+    position: absolute;
+    font-family: 'Consolas', 'Menlo', monospace;
+    font-size: 10.5px;
+    line-height: 1.45;
+  }
+  .annot .head {
+    font-weight: 700;
+    font-size: 10.5px;
+    letter-spacing: 0.4px;
+    color: var(--ink);
+  }
+  .annot .body { color: var(--ink-soft); }
+  .annot em { color: var(--ink-soft); }
+
+  /* AC entry — top wall, right side */
+  .annot-ac {
+    left: 480px;
+    top: 16px;
+    width: 200px;
+    text-align: center;
+  }
+  .annot-ac .head { color: var(--ac-red); }
+  .annot-ac .arrow {
+    display: block;
+    color: var(--ac-red);
+    font-size: 20px;
+    margin-top: 4px;
+    line-height: 1;
+  }
+
+  /* Strip cable bundle — top wall, left side */
+  .annot-bundle {
+    left: 175px;
+    top: 16px;
+    width: 220px;
+    text-align: center;
+  }
+  .annot-bundle .head { color: var(--accent); }
+  .annot-bundle .arrow {
+    display: block;
+    color: var(--accent);
+    font-size: 20px;
+    margin-top: 4px;
+    line-height: 1;
+  }
+
+  /* Panel cables — left wall, hinge side, lower portion */
+  .annot-panels {
+    left: 12px;
+    top: 380px;
+    width: 145px;
+  }
+  .annot-panels .head { color: var(--accent); }
+  .annot-panels .cable-list { margin-top: 6px; font-size: 10.5px; }
+  .annot-panels .cable-list div::before {
+    content: '◀ ';
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* Hinge indicator — vertical dashed line along left edge of backplate */
+  .hinge-strip {
+    position: absolute;
+    left: 158px;
+    top: 95px;
+    width: 4px;
+    height: 520px;
+    background: repeating-linear-gradient(
+      0deg,
+      var(--ink) 0 8px,
+      transparent 8px 14px
+    );
+    z-index: 2;
+  }
+  .hinge-strip .lab {
+    position: absolute;
+    left: -32px;
+    top: 222px;
+    font-family: 'Consolas', monospace;
+    font-size: 9px;
+    letter-spacing: 1.2px;
+    font-weight: 700;
+    color: var(--ink);
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    background: var(--paper);
+    padding: 4px 2px;
+  }
+
+  /* ===== Tables ===== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0 24px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  th {
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #fafaf7; }
+
+  td.center, th.center { text-align: center; }
+  td.qty { text-align: center; font-weight: 700; color: var(--accent); white-space: nowrap; }
+
+  /* ===== Build steps ===== */
+  .step {
+    background: var(--paper);
+    border-left: 4px solid var(--accent);
+    padding: 14px 20px;
+    margin: 12px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .step h3 { margin: 0 0 6px; color: var(--accent); }
+  .step .body { color: var(--ink); }
+
+  /* ===== Shopping checklist styling ===== */
+  .shop-cat {
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 6px 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.85em;
+    border-top: 1px solid var(--accent);
+  }
+  .shop-cat td { background: var(--accent-soft) !important; }
+
+  .shop-subcat {
+    background: #f4f1e8;
+    color: var(--ink-soft);
+    font-style: italic;
+    font-weight: 600;
+    font-size: 0.88em;
+  }
+  .shop-subcat td {
+    background: #f4f1e8 !important;
+    padding: 5px 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .check-cell {
+    width: 32px;
+    text-align: center;
+    padding: 8px 4px;
+  }
+  .shop-check {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--accent);
+    margin: 0;
+  }
+  tr.shop-checked td:not(.check-cell):not(.qty) {
+    color: var(--ink-soft);
+    text-decoration: line-through;
+    text-decoration-color: var(--rule);
+  }
+  tr.shop-checked td.qty {
+    color: var(--ink-soft);
+    opacity: 0.6;
+  }
+  .shop-progress {
+    display: inline-block;
+    margin-left: 12px;
+    padding: 3px 10px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 600;
+    font-family: 'Consolas', monospace;
+    vertical-align: middle;
+  }
+  .shop-reset {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 3px 10px;
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-family: 'Helvetica Neue', sans-serif;
+    cursor: pointer;
+    vertical-align: middle;
+  }
+  .shop-reset:hover {
+    color: var(--warn);
+    border-color: var(--warn);
+  }
+
+  /* ===== Legend ===== */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    font-size: 0.85em;
+    margin: 16px 0 0;
+    color: var(--ink-soft);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .swatch {
+    display: inline-block;
+    width: 16px; height: 12px;
+    border: 1px solid var(--ink);
+    border-radius: 2px;
+  }
+
+  /* ===== Wall diagram ===== */
+  .walls {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin: 16px 0;
+  }
+  .wall-card {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--accent);
+    padding: 14px 18px;
+    border-radius: 0 6px 6px 0;
+  }
+  .wall-card h3 { margin: 0 0 6px; color: var(--accent); font-size: 1em; }
+  .wall-card .note { font-size: 0.85em; color: var(--ink-soft); margin-top: 4px; }
+
+  .footnote {
+    color: var(--ink-soft);
+    font-size: 0.88em;
+    font-style: italic;
+    margin: 8px 0 0;
+  }
+
+  .callout {
+    background: #fff8e6;
+    border-left: 4px solid #d4a400;
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.95em;
+  }
+  .callout strong { color: #846800; }
+
+  @media print {
+    body { max-width: none; padding: 20px; }
+    .stage, .step, .wall-card, table { break-inside: avoid; }
+    h2 { break-after: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Apollo Lighting — Backplate Build Guide</h1>
+  <div class="subtitle">Top-down layout, build order, and shopping list for the 12″ × 12″ × 6″ control enclosure</div>
+  <div class="meta">Project: Apollo sim-room lighting · 5-zone tunable white · ESP32-driven</div>
+</header>
+
+<!-- ============================================ -->
+<h2><span class="num">1</span>The Layout</h2>
+<p>You're looking <em>straight down</em> at the open enclosure, door removed. The dashed square is the enclosure interior (~305 mm); the solid inner square is the <strong>249 × 249 mm (9.8″) backplate</strong>. Components are drawn to scale — grid = 25 mm. Depth (6″) is into the page.</p>
+
+<div class="stage">
+  <div class="enclosure">
+    <div class="enc-tag">ENCLOSURE INTERIOR ≈ 305 × 305 mm</div>
+
+    <div class="wnote" style="left:24px; top:-32px; width:150px;">↑ 5× 18/3 strip cables<br>exit top wall → joists</div>
+    <div class="wnote" style="left:238px; top:-32px; width:210px; color:var(--ac-red);">↓ Romex AC in — top wall,<br>at the PSU's terminal end</div>
+    <div class="wnote" style="left:-32px; top:248px; writing-mode:vertical-rl; transform:rotate(180deg);">◀ DOOR HINGE — panel + display umbilical</div>
+
+    <div class="backplate">
+      <div class="bp-tag">BACKPLATE 249 × 249 mm (9.8″) · grid = 25 mm</div>
+
+      <!-- PSU — pushed into the enclosure's top-right corner; overhangs the backplate -->
+      <div class="comp psu" style="left:104px; top:-56px; width:450px; height:248px;">
+        <div style="position:absolute; left:0; top:0; bottom:0; width:11px; background:repeating-linear-gradient(0deg,#cdc8bb 0 7px,#a59f8e 7px 10px); border-right:1px solid #8f8a7b;"></div>
+        <div class="label" style="margin-left:14px;">PSU — Mean Well LRS-450-24</div>
+        <div class="sub" style="margin-left:14px;">225 × 124 mm. Pushed into the enclosure's top-right corner — top &amp; right sides against the enclosure walls (vents stay clear). On standoffs: clears the backplate-mounting hardware and overhangs the backplate's top &amp; right edges.</div>
+        <div class="orient" style="margin-left:14px;">↻ ORIENT — long axis horizontal · terminal end (hatched: ⏚ L N −V −V +V +V) on the LEFT short end, facing inward</div>
+      </div>
+
+      <!-- SIGNAL terminal block — rotated 90° into the strip left of the PSU -->
+      <div class="comp sigblk rot" style="left:4px; top:20px; width:96px; height:140px;">
+        <div class="label">SIGNAL block</div>
+        <div class="sub">OONO 2×12<br>70 × 48 mm<br>commons + dev GND</div>
+        <div class="orient">↻ ROTATE 90° — A-rail (A1–A12) on the LEFT edge (umbilical side)</div>
+      </div>
+
+      <!-- Button-LED driver module -->
+      <div class="comp led-drv" style="left:12px; top:172px; width:72px; height:32px;">
+        <div class="label" style="font-size:10px;">LED DRV</div>
+        <div class="orient" style="margin-top:2px; padding-top:0; border-top:0; font-size:8px;">VIN/VOUT ◀ left</div>
+      </div>
+
+      <!-- ESP32 + screw-terminal adapter (landscape — USB-C points left) -->
+      <div class="comp esp" style="left:10px; top:216px; width:148px; height:130px;">
+        <div class="label">ESP32 + screw-terminal adapter</div>
+        <div class="sub">~74 × 65 mm (38-pin). Screw-terminal rows run along the top &amp; bottom edges.</div>
+        <div class="orient">↻ ORIENT — USB-C ◀ left; bottom row faces the MOSFETs (PWM drops straight down)</div>
+      </div>
+
+      <!-- POWER terminal block -->
+      <div class="comp pwrblk" style="left:184px; top:222px; width:140px; height:96px;">
+        <div class="label">POWER block</div>
+        <div class="sub">OONO 2×12 · 70 × 48 mm · directly below the PSU's DC terminals.</div>
+        <div class="orient">↻ ORIENT — horizontal · A-rail (A1–A12) = +24V along the TOP edge · B-rail = Power GND, bottom</div>
+      </div>
+
+      <!-- Buck converter -->
+      <div class="comp buck" style="left:340px; top:236px; width:132px; height:72px;">
+        <div class="label">Buck 24 → 5 V</div>
+        <div class="sub">66 × 36 mm · +24V in from the POWER block, 5 V out to ESP32 + LED DRV.</div>
+        <div class="orient">↻ ORIENT — IN edge ◀ left · OUT ▶ right · LCD on the lower edge</div>
+      </div>
+
+      <!-- MOSFET boards — row across the lower backplate -->
+      <div class="comp mosfet" style="left:30px; top:362px; width:110px; height:110px;">
+        <div class="label">MOSFET 1</div>
+        <div class="sub">55 × 55 mm · 4-ch</div>
+        <div class="terms" style="display:block; margin-top:5px;">ch1–2 → Strip 1 W/C<br>ch3–4 → Strip 2 W/C</div>
+        <div class="orient">↻ IN row (8 screws) faces UP · OUT row (10) DOWN</div>
+      </div>
+      <div class="comp mosfet" style="left:194px; top:362px; width:110px; height:110px;">
+        <div class="label">MOSFET 2</div>
+        <div class="sub">55 × 55 mm · 4-ch</div>
+        <div class="terms" style="display:block; margin-top:5px;">ch1–2 → Strip 3 W/C<br>ch3–4 → Strip 4 W/C</div>
+        <div class="orient">↻ IN row (8 screws) faces UP · OUT row (10) DOWN</div>
+      </div>
+      <div class="comp mosfet" style="left:358px; top:362px; width:110px; height:110px;">
+        <div class="label">MOSFET 3</div>
+        <div class="sub">55 × 55 mm · 4-ch</div>
+        <div class="terms" style="display:block; margin-top:5px;">ch1–2 → Strip 5 W/C<br>ch3–4 → 2 spare</div>
+        <div class="orient">↻ IN row (8 screws) faces UP · OUT row (10) DOWN</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="swatch" style="background: var(--psu-bg);"></span> PSU</div>
+    <div class="legend-item"><span class="swatch" style="background: #ffe7bf;"></span> POWER block (+24V / Power GND)</div>
+    <div class="legend-item"><span class="swatch" style="background: #dde2ec;"></span> SIGNAL block (commons / device GND)</div>
+    <div class="legend-item"><span class="swatch" style="background: var(--mosfet-bg);"></span> MOSFET trigger boards ×3</div>
+    <div class="legend-item"><span class="swatch" style="background: var(--buck-bg);"></span> Buck (24→5 V)</div>
+    <div class="legend-item"><span class="swatch" style="background: #ead8e3;"></span> Button-LED driver module</div>
+    <div class="legend-item"><span class="swatch" style="background: var(--esp-bg);"></span> ESP32 (38-pin)</div>
+    <div class="legend-item"><span class="rot-key">⟳</span> drawn rotated from natural orientation</div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<h2><span class="num">2</span>Zone Notes</h2>
+
+<div class="step">
+  <h3>Top — AC Entry &amp; PSU</h3>
+  <div class="body">
+    The PSU is pushed into the enclosure's <strong>top-right corner</strong>, long-axis horizontal, top and right sides against the enclosure walls (vents stay clear). It's larger than the room below it, so it rides on standoffs and <strong>overhangs the backplate's top-right edge</strong> — the standoffs are also sized to clear the hardware that fixes the backplate to the enclosure. Its terminal end faces <strong>left/inward</strong> so the Romex and the DC output runs land toward the plate, not against a wall.
+    <ul style="margin: 6px 0 0; padding-left: 20px;">
+      <li><strong>Direct Romex (NM-B).</strong> The enclosure is recessed in the wall, so building AC is run to it as NM-B cable. It enters a top-wall knockout through an NM cable clamp and lands on the PSU's L / N / ⏚ terminals (the hot via an inline fuse holder first). No IEC inlet, no cord-and-plug. See "AC Entry &amp; In-Wall Rough-In" in Build Tips.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step">
+  <h3>Distribution — POWER &amp; SIGNAL Blocks</h3>
+  <div class="body">Two OONO 2×12 distribution blocks, 70 × 48 mm each. The <strong>POWER block</strong> sits just below the PSU's DC terminals — A rail = +24V, B rail = Power GND — so the fat PSU V+/V− wires drop straight down. The <strong>SIGNAL block</strong> is rotated 90° into the narrow strip left of the PSU (hinge side, where the panel umbilical lands) — A rail = switch commons, B rail = device GND. One jumper bridges Power GND → Signal GND: the <strong>star ground</strong>, the only tie between the two ground domains, which keeps PWM-switching noise off the ADC reads. The buck converter shares the distribution band, right of the POWER block.</div>
+</div>
+
+<div class="step">
+  <h3>MOSFET Row — 3 Boards</h3>
+  <div class="body">Three 55 × 55 mm 4-channel boards in a row across the lower backplate, on M3 standoffs. Orient each so the control edge (PWM-in + VIN + GND) faces <strong>up</strong> toward the ESP32 and POWER block, and the output edge faces <strong>down</strong> — strip-cable runs loop down and around the inside wall up to the top-wall exit. VIN/GND tap to the POWER block; the 10 PWM inputs come from the ESP32.</div>
+</div>
+
+<div class="step">
+  <h3>ESP32 — Below the PSU, Hinge Side</h3>
+  <div class="body">
+    The 38-pin ESP32 + screw-terminal adapter mounts directly below the PSU on the left/hinge side. It's sandwiched between the PSU and the MOSFET row, so USB-C points <strong>left</strong> toward the open hinge side — the only short edge with clearance (up and down are blocked within ~5–8 mm). Its screw-terminal rows then run along the top and bottom edges: the <strong>bottom row faces the MOSFETs</strong>, so the 10 PWM wires drop straight down with no bend. The panel umbilical arrives from the left and fans to the two rows.
+    <ul style="margin: 6px 0 0; padding-left: 20px;">
+      <li>All 9 panel switches/button wire directly to ESP32 GPIOs — no I/O expander. See CLAUDE.md for the pin map.</li>
+      <li>The 4-wire I²C bus (SDA / SCL / 3V3 / GND) leaves the ESP32 and crosses the door hinge to the two displays — CCT and lumens.</li>
+      <li>Switch commons, pot lows, ESP32 GND and the display GND return all land on the SIGNAL block beside it (~13 landings across its two rails) rather than chaining onto one strip.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<h2><span class="num">3</span>Wiring Flow (build in this order)</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th class="center" style="width:50px;">#</th>
+      <th>From</th>
+      <th>To</th>
+      <th>Wire</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="center">1</td><td>NM-B (Romex, 14/2) from the branch circuit, into the box through an NM cable clamp</td><td>Romex L → inline fuse holder → PSU L; Romex N → PSU N; Romex G → PSU ⏚ + chassis ground bond<br><em>Solid NM-B conductors can land directly on the PSU's screw terminals; use short 14 AWG stranded pigtails wherever the fuse holder or a splice needs one</em></td><td>14/2 NM-B in; 14 AWG stranded pigtails inside</td></tr>
+    <tr><td class="center">2</td><td>PSU V+</td><td>+24V terminal strip</td><td>14 AWG, red</td></tr>
+    <tr><td class="center">3</td><td>PSU V−</td><td>Power GND terminal strip</td><td>14 AWG, black</td></tr>
+    <tr><td class="center">4</td><td>+24V strip</td><td>3× MOSFET VIN  ·  5× strip-cable +24V  ·  Buck V+</td><td>18 AWG, red</td></tr>
+    <tr><td class="center">5</td><td>Power GND strip</td><td>3× MOSFET GND  ·  Buck GND</td><td>18 AWG, black</td></tr>
+    <tr><td class="center">6</td><td>Power GND strip</td><td>Signal GND strip  <strong>(★ star bridge — ONE wire)</strong></td><td>18 AWG, black</td></tr>
+    <tr><td class="center">7</td><td>ESP32 PWM GPIOs ×10</td><td>MOSFET PWM inputs<br><em>14, 12, 13, 4, 16, 17, 18, 19, <strong>25</strong>, 2 — Strip 5 WARM now on GPIO 25 (was 21)</em></td><td>22–24 AWG, signal colors</td></tr>
+    <tr><td class="center">8</td><td>MOSFET outputs ×10</td><td>Strip-cable warm− / cool− conductors</td><td>18 AWG (matches 18/3 strip cable)</td></tr>
+    <tr><td class="center">9</td><td>Buck 5V output</td><td>ESP32 VIN  ·  LED Driver module VCC</td><td>22 AWG, red + black</td></tr>
+    <tr><td class="center">10</td><td>Power GND strip</td><td>LED Driver module GND</td><td>22 AWG, black</td></tr>
+    <tr><td class="center">11</td><td>ESP32 GPIO 15</td><td>LED Driver module signal input (SIG / PWM / IN)</td><td>22 AWG</td></tr>
+    <tr><td class="center">12</td><td>LED Driver module OUT+ / OUT−</td><td>Apollo umbilical → MASTER RESET button LED (anode / cathode)</td><td>22 AWG</td></tr>
+    <tr><td class="center">13</td><td>9 panel switch signals (from umbilical)</td><td>ESP32 GPIOs <em>(34, 35, 32, 33, 27, 26, 23, 5, 0 — see CLAUDE.md pin map)</em></td><td>22–24 AWG (already in panel cables)</td></tr>
+    <tr><td class="center">14</td><td>Panel switch commons + pot lows</td><td>Signal GND strip</td><td>22–24 AWG (already in panel cable)</td></tr>
+    <tr><td class="center">15</td><td>ESP32 3V3 pin</td><td>L-Speed pot tops (×2, via umbilical)</td><td>22–24 AWG, red</td></tr>
+    <tr><td class="center">16</td><td>Pot wipers (×2, from umbilical)</td><td>ESP32 GPIO 36 (warm), 39 (cool) — solder a 0.1 µF cap wiper-to-GND at each ADC pin (anti-jitter; see CLAUDE.md → Responsiveness / feel)</td><td>22–24 AWG (already in panel cable)</td></tr>
+    <tr style="background: #f0f4ea;"><td class="center"><strong>17</strong></td><td><strong>ESP32 GPIO 21 (SDA), 22 (SCL), 3V3, GND</strong></td><td><strong>4-conductor display umbilical → both HT16K33 displays on door</strong></td><td>22 AWG (yellow / blue / red / black)</td></tr>
+  </tbody>
+</table>
+
+<p class="footnote">Row 17 (highlighted) carries the 4-wire I²C bus across the door hinge to both displays — CCT at <code>0x70</code>, lumens at <code>0x71</code>, daisy-chained on the door. Pull SDA = yellow, SCL = blue, VCC = red, GND = black per convention so the bus is visually traceable through the umbilical.</p>
+
+<!-- ============================================ -->
+<h2><span class="num">4</span>Cable Entries (Enclosure Walls, Not Backplate)</h2>
+
+<p>The hinged door is on the <strong>left</strong>. The Concord panels are mounted to the door, so panel cables cross the hinge as a flexible umbilical — no external cable gland needed for them.</p>
+
+<div class="walls">
+  <div class="wall-card">
+    <h3>Top Wall — Right Side: AC Entry</h3>
+    <div><strong>Direct Romex (NM-B).</strong> A 14/2 NM-B cable from the branch circuit enters a knockout through an NM cable clamp/connector — the clamp is the strain relief, purpose-made for flat NM cable (not a gland, not a bare hole). Inside, the hot passes through an inline fuse holder before the PSU's L terminal.</div>
+    <div class="note">Position over the PSU's terminal end so the AC run is short. A ½″ NM clamp wants a ~⅞″ knockout — step bit. See "AC Entry &amp; In-Wall Rough-In" in Build Tips.</div>
+  </div>
+  <div class="wall-card">
+    <h3>Top Wall — Left Side: Strip Cable Bundle</h3>
+    <div>1× large strain relief / multi-cable bushing. Five 18/3 cables exit together, bundled with split-loom or spiral wrap, then run up the wall through a single channel/conduit to the joists.</div>
+    <div class="note">For a ~5-cable bundle of 18/3 (~6–8 mm OD each), look at: Heyco SR-7P-4 multi-port strain relief, a 1″ NPT cord grip with multi-cable insert, or a single large rubber grommet (1″ – 1.25″ ID) plus an internal cable clamp for strain relief.</div>
+  </div>
+  <div class="wall-card">
+    <h3>Left Wall — Door Hinge Crossover</h3>
+    <div>Panel cables (3 cables, or one bundled umbilical) cross from the door panels to the backplate via a flexible service loop near the hinge.</div>
+    <div class="note">No gland required — keep the cable bundle inside the enclosure. Anchor on both the door side and the backplate side; leave enough slack so the door swings fully open without tension. See zone note below for routing detail.</div>
+  </div>
+  <div class="wall-card">
+    <h3>Right &amp; Bottom Walls — Unused</h3>
+    <div>No penetrations. Bottom kept clear so the box can rest on this side during assembly &amp; wiring.</div>
+    <div class="note">Reserves space for future expansion if you ever need an external sensor input, remote enable, or aux output.</div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<h2><span class="num">5</span>Standoff Heights</h2>
+
+<table>
+  <thead>
+    <tr><th>Component</th><th>Standoff</th><th>Mounting</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>PSU (LRS-450-24)</td><td>Standoffs — tall enough to clear the backplate-mounting hardware</td><td>Pushed into the enclosure's top-right corner (top + right sides against the enclosure walls, vents clear). It overhangs the backplate edge, so it rides on standoffs that also lift it above the bolts/studs fixing the backplate to the enclosure. 4× screws into the PSU's case mounting holes — keep them short</td></tr>
+    <tr><td>ESP32 + screw-terminal adapter</td><td>M3, ~12 mm hex</td><td>4× standoffs so adapter screw terminals clear backplate</td></tr>
+    <tr><td>MOSFET trigger boards (×3)</td><td>M3, ~12 mm hex</td><td>4× standoffs each = 12 total</td></tr>
+    <tr><td>Buck converter</td><td>M3, ~6 mm hex</td><td>2–4× depending on module</td></tr>
+    <tr><td>LED driver module</td><td>M3, ~6 mm hex</td><td>2–4× depending on module</td></tr>
+    <tr><td>4-digit displays — CCT + lumens (×2)</td><td>M2.5 standoffs on the <em>door</em>, not backplate</td><td>Each mounts through its own rectangular window cutout; bezel ring hides edges. Set the lumens unit to address 0x71</td></tr>
+    <tr><td>OONO distribution blocks (×2)</td><td>Direct mount</td><td>Built-in screw flanges</td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <strong>On the 6″ depth being &quot;too much&quot;:</strong> You'll be glad of it. The depth budget is eaten by <em>wire bend radius</em>, not component height. 18/3 cable doesn't like sharp 90° turns; the extra inches behind the components let cables curve gracefully from the glands to the strips. A 4″ box would be a fistfight.
+</div>
+
+<!-- ============================================ -->
+<h2><span class="num">6</span>Shopping List <span class="shop-progress" id="shop-progress">0 / 0</span> <button class="shop-reset" id="shop-reset" type="button">Reset</button></h2>
+<p>Check items off as you order. Your progress is saved automatically in this browser. Quantities assume the build above; buy extra wire and ferrules — you'll burn through more than you expect.</p>
+
+<table class="shop-table">
+  <thead>
+    <tr>
+      <th class="check-cell"></th>
+      <th>Item</th>
+      <th>Spec / Notes</th>
+      <th class="center">Qty</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    <tr class="shop-cat"><td colspan="4">AC Entry &amp; Mains</td></tr>
+
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>14/2 NM-B cable (Romex), for the run from the branch circuit to the apollo box</td><td>Length = your source-to-box run plus ~2 ft slack inside the box and ~2 ft at the source end. Standard residential NM-B. The box is recessed in the wall; this run is concealed in the framing.</td><td class="qty">~length of run + 4 ft</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>NM cable clamp / connector, ½″</td><td>Lands the NM-B cable at a top-wall knockout (~⅞″ hole). This clamp is the AC cable's strain relief — purpose-made for flat NM cable. Not a gland, not a bare hole.</td><td class="qty">1</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Panel-mount inline fuse holder, 5×20 mm</td><td>Mounts inside the box near the PSU's L terminal; the Romex hot conductor passes through the fuse before reaching the PSU. Protects the PSU and in-box wiring below the branch breaker's rating. Bussmann HVU or similar — needs a panel cutout (usually ½″) or screw mount.</td><td class="qty">1</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Fuses, 5×20 mm slow-blow</td><td>5 A · grab a few spares. Slow-blow tolerates PSU inrush at power-up.</td><td class="qty">3</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Wago 221 lever nuts (assortment)</td><td>For any AC splice between the NM-B conductors and short stranded pigtails (e.g. the fuse-holder leads). A small assortment kit is cheap insurance for the rest of the build too.</td><td class="qty">1 assortment kit</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Cable staples for NM cable + steel nail plates</td><td>Insulated staples sized for 14/2 NM-B — secure the run within 12″ of the box and every ~4½ ft. Nail plates protect the cable where it passes framing less than 1¼″ from the face.</td><td class="qty">1 pack each</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>14 AWG silicone stranded wire kit (Fermerry, 10 ft × 6 colors)</td><td>600V / 200°C / 30A / tinned copper. Covers AC pigtails (black/white/green, short runs from the fuse holder / splices to the PSU terminals) AND PSU output runs to the distribution blocks (red + black, ~2 ft each). Includes heat shrink + zip ties.</td><td class="qty">1 kit</td></tr>
+
+    <tr class="shop-cat"><td colspan="4">Power Distribution</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>OONO Screw Mount 30A / 300V 2×12 distribution module (or equivalent dual-rail distribution block)</td><td>Each block has 2 independent rails of 12 positions, plus heavier main feed terminals at the ends (10 AWG cap). <br><strong>Block 1 (POWER):</strong> A rail = +24V (PSU V+ in via main &quot;A&quot;), B rail = Power GND (PSU V− in via main &quot;B&quot;). Mount below PSU.<br><strong>Block 2 (SIGNAL):</strong> A rail = switch commons (9× from panels, plus pot lows). B rail = device GNDs (ESP32 GND, display GND return, star-bridge from Power GND). Both rails sit at the same potential — using both gives ~13 landings without chaining. Mount below the ESP32 row.</td><td class="qty">2</td></tr>
+
+    <tr class="shop-cat"><td colspan="4">Distribution Wire</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>14 AWG silicone wire (covered above)</td><td>PSU V+ / V− runs to distribution blocks use the same 14 AWG kit listed in the AC Entry section</td><td class="qty">—</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>18 AWG silicone stranded wire kit (Fermerry, 10 ft × 6 colors)</td><td>600V / 200°C / 13A / tinned copper. Primary use: red (+24V distribution to MOSFETs, strip cable taps, buck) and black (Power GND to MOSFETs + buck + star bridge to Signal GND). 10 ft per color is plenty — worst case if you burn through red or black, substitute another color from the kit and label both ends.</td><td class="qty">1 kit</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>22 AWG silicone stranded wire kit (NAOEVO, 60 ft × 6 colors)</td><td>For ESP32 ↔ MOSFETs (10 PWM lines), buck 5V → ESP32, the button-LED driver module, and any other signal-level jumpers. Silicone / 200°C / tinned copper. The listing shows &quot;12V&quot; as Amazon's auto-category — irrelevant; every signal on this wire is ≤ 5V. 60 ft per color is way more than you need (~10–15 ft total), but cheap stockpile for future projects.</td><td class="qty">1 kit</td></tr>
+
+    <tr class="shop-cat"><td colspan="4">LED Strip Cable (External Runs)</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>18/3 stranded cable</td><td>One per strip · UL2464 18 AWG / 3-conductor (~5.5 mm OD) · length = your joist run + slack</td><td class="qty">5 cables</td></tr>
+
+    <tr class="shop-cat"><td colspan="4">Termination Hardware</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Ferrule kit (mixed sizes)</td><td>14 / 16 / 18 / 22 / 24 AWG — Wirefy 1200-pc or similar</td><td class="qty">1 kit</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Ratcheting ferrule crimper</td><td>Self-adjusting, 0.25–6 mm² range. Used for every screw-terminal landing in the build (distribution blocks, MOSFET boards, terminal strips).</td><td class="qty">1</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Heat-shrink butt-splice crimp connectors (insulated, assortment kit)</td><td><strong>Primary use:</strong> splicing the factory pigtails on each LED strip (BLACK / YELLOW / WHITE) to the 18/3 strip cable. 5 strips × 3 wires = <strong>15 splices minimum</strong>, plus extras for any JST pigtail joins or panel-LED resistor inline fix. Get a 100-pc mixed kit covering 22-18 AWG (red = 22-18 AWG for your 18 AWG splices). Crimps with pliers or a basic crimper.</td><td class="qty">1 kit</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Pre-insulated ring terminals, M6 stud, 14 AWG</td><td>For chassis ground bond — replaces the &quot;tin the wire end&quot; technique with a no-solder crimp. Crimps with pliers (squeeze the metal sleeve flat onto the wire); for one connection this is plenty reliable.</td><td class="qty">1 pack of 10</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Heat-shrink tubing assortment</td><td>Multi-diameter pack, black + colored. For general wire protection and labeling.</td><td class="qty">1 kit</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Heat gun (Harbor Freight basic model, ~$15-20)</td><td>For activating heat-shrink on butt-splice connectors (15+ splices for strips) and any general heat-shrink tubing in the build. Any cheap dual-temp gun works — you need ~200°C, far below max output on even the entry-level guns. Soldering iron held near can substitute in a pinch, but a heat gun is the right tool.</td><td class="qty">1</td></tr>
+
+    <tr class="shop-cat"><td colspan="4">Cable Entry &amp; Strain Relief</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>3/4″ FMC straight connector (conduit-to-box, with locknut)</td><td>One for the enclosure top wall (replaces the cable gland), one for the joist-end termination where cables fan out. Takes a 1-1/8″ knockout (~28mm hole — step drill bit handles this).</td><td class="qty">2</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>3/4″ Flexible Metal Conduit (FMC / &quot;Greenfield&quot;)</td><td>Galvanized steel ribbed conduit, by the foot. Measure: enclosure top → up wall → top of run. Buy extra (~2 ft buffer beyond your measurement). <strong>Specify SJ-grade 18/3 cable</strong> (~7mm OD) so 5 cables bundle fits cleanly in 3/4″ ID.</td><td class="qty">~6–8 ft</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Anti-short bushings for 3/4″ FMC</td><td>Plastic inserts that go into each cut end of the FMC before the connector is tightened. Prevent the sharp interlocked-strip edges from cutting into cable jackets. Often included with FMC connectors — verify before ordering separately.</td><td class="qty">2</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Conduit straps for 3/4″ FMC</td><td>One-hole or two-hole straps to anchor the FMC to the wall every ~3 ft of run. Steel or plastic. Cheap.</td><td class="qty">4–6</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Spiral wrap or fabric sleeving, ¼″–⅜″</td><td>To bundle the 3 panel cables into one door-hinge umbilical</td><td class="qty">~2 ft</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Cable clamps / adhesive cable tie mounts</td><td>2× for door-side anchor, 2× for backplate-side anchor of the hinge umbilical, extras for general routing</td><td class="qty">10–20</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Female spade quick-disconnect terminals, insulated, .250″ tab size, 22-10 AWG (TICONN 100-pc or equivalent)</td><td>For mating with the male spade tabs on Concord panel switches and the MASTER RESET button. Estimated ~20-25 female crimps needed across all panels. Use the <strong>red</strong> (22-18 AWG) ones for the 22 AWG umbilical wires. <strong>Note:</strong> kit is .250″ tab only. If any panel switches turn out to use .187″ tabs (less common on industrial-rated Concord hardware), order a smaller follow-up kit for those.</td><td class="qty">1 kit</td></tr>
+
+    <tr class="shop-cat"><td colspan="4">ESP32 Power &amp; Button LED Driver</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Buck converter, 24V → 5V</td><td>≥ 1 A out · LM2596 module or Pololu D24V10F5 (cleaner)</td><td class="qty">1</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>MOSFET driver / trigger module, 1- or 2-channel, with screw terminals</td><td>For switching the MASTER RESET button LED. Verify the listing says &quot;3.3V/5V logic compatible&quot; or &quot;Arduino/Raspberry Pi compatible&quot; — most are, but some older designs need 5V on the gate. Spec doesn't matter much for current (a 15A module driving a 20mA LED works fine). Mounts on M3 standoffs near the buck converter.</td><td class="qty">1 (buy 5-pack for spares)</td></tr>
+
+    <tr class="shop-cat"><td colspan="4">ESP32 Board &amp; Displays</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>ESP32 38-pin development board (NodeMCU-32S / DOIT DevKit V1 form factor)</td><td>HiLetgo, DIYmall, MELIFE, or similar — search Amazon for &quot;ESP32 38-pin development board&quot;. Often sold in 2-packs for ~$15. Generic <code>esp32dev</code> PlatformIO target. The 30-pin AITRIP board you already have stays as a spare / breadboard unit. The 38-pin form factor gives just enough additional GPIOs to wire all 9 panel switches/button + the I²C display directly to the ESP32, eliminating the need for an I/O expander chip.</td><td class="qty">1 (or 2-pack — extras are cheap and useful)</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>ESP32 38-pin screw-terminal adapter / expansion board</td><td>Search Amazon for &quot;ESP32 38-pin screw terminal&quot; or &quot;ESP32 expansion board screw terminal&quot;. The ESP32 plugs into pin headers on this board, and every GPIO breaks out to a labeled screw terminal. Verify the listing fits a <strong>38-pin</strong> board (some only fit 30-pin — same brand sometimes sells both). ~$10–15.</td><td class="qty">1</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Adafruit 0.56″ 4-digit 7-segment display, blue, I²C backpack (×2)</td><td>Adafruit PID 881 (blue), HT16K33 driver. <strong>Two units:</strong> one is the CCT readout (leave at default address <code>0x70</code>, bezel label &quot;K&quot;); the other is the lumens readout (bridge the <code>A0</code> address jumper for <code>0x71</code>, bezel label &quot;lm&quot;). Both mount on the door behind window cutouts. Bezel labels are permanent — screen-printed / vinyl-cut / engraved / 3D-printed, not lit. Both must be the 7-segment type — the lumens scaling uses the decimal point. <br><em>If you want larger digits later:</em> Adafruit's 1.2″ versions (PID 1268-series) are typically only red/yellow/green/white, not blue.</td><td class="qty">2</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>4-conductor ribbon or stranded bundle for display umbilical</td><td>Carries SDA / SCL / 3V3 / GND across the door hinge. One run feeds display #1; a short 4-wire jumper daisy-chains to display #2. Cut from the NAOEVO 22 AWG kit you already have (yellow, blue, red, black). Bundle into the panel umbilical with spiral wrap.</td><td class="qty">covered</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Display mounting hardware</td><td>Each Adafruit 7-seg backpack has 4× 2.5 mm corner mounting holes (8 total for the pair). Options: (a) M2.5 standoffs + screws through window cutouts in the door panel — most aerospace-faithful look; (b) double-sided foam tape behind each display, hidden by an opaque bezel ring — simplest. Buy a small M2.5 standoff/screw kit either way (~$8).</td><td class="qty">1 small kit</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Ceramic capacitors, 0.1 µF</td><td>One per pot wiper — soldered wiper-to-GND at the ESP32 ADC pin (GPIO 36 / 39). Forms a ~1 ms RC filter with the pot that kills ADC jitter, so the light and displays don't shimmer. See CLAUDE.md → "Responsiveness / feel." Any 0.1 µF ceramic.</td><td class="qty">2 (grab a strip of 10)</td></tr>
+
+    <tr class="shop-cat"><td colspan="4">Mounting Hardware</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>M3 hex standoffs, 12 mm, M-F</td><td>4 ESP32 + 12 MOSFETs = 16 minimum</td><td class="qty">~20</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>M3 hex standoffs, 6 mm, M-F</td><td>For buck converter</td><td class="qty">4</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>M3 machine screws, 6–8 mm</td><td>Tops of standoffs (board side)</td><td class="qty">~24</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Self-tapping screws OR rivnut kit</td><td>To attach standoffs to steel backplate</td><td class="qty">~24 / 1 kit</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>M4 screws + standoffs for PSU</td><td>The PSU rides on standoffs at the enclosure's top-right corner — lifted to clear the backplate-mounting hardware. Screws go into the PSU's case mounting holes; keep them short enough not to bottom out inside the case.</td><td class="qty">4 + standoffs</td></tr>
+
+    <tr class="shop-cat"><td colspan="4">Cable Management &amp; Finishing</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Zip ties or Velcro straps</td><td>Mixed sizes</td><td class="qty">1 pack</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>Wire labels / label maker tape</td><td>So future-you doesn't curse present-you</td><td class="qty">1</td></tr>
+    <tr><td class="check-cell"><input type="checkbox" class="shop-check" aria-label="Mark item as obtained"></td><td>M6 star washer (external tooth) + M6 machine screw + nut</td><td>For chassis ground bond. The <em>star</em> washer (not a spring/split washer) is what bites through paint/oxide into bare metal — that's the electrical-bond half. Optional second spring washer for vibration compression. Wire end: tin with solder, bend into a loop around the screw shaft (no ring lug or special crimper needed for a single connection).</td><td class="qty">1 set</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================ -->
+<h2><span class="num">7</span>Notes &amp; Build Tips</h2>
+
+<div class="step">
+  <h3>Wire Color Convention</h3>
+  <div class="body">
+    AC: black (Line), white (Neutral), green (Ground) — US/NEC standard.<br>
+    DC power: red (+24V), black (0V/GND).<br>
+    Signal: any high-contrast color. Yellow and blue are easy on the eyes for switch wires and pot wipers.
+  </div>
+</div>
+
+<div class="step">
+  <h3>Fuse Sizing</h3>
+  <div class="body">LRS-450-24 draws ~4 A peak at 120 V AC (450 W ÷ 0.9 efficiency ÷ 120 V). A <strong>5 A slow-blow</strong> 5×20 mm fuse in the panel-mount inline holder — ahead of the PSU's L terminal — covers normal operation and tolerates PSU inrush at startup. Don't use fast-blow; it'll nuisance-trip on power-up.</div>
+</div>
+
+<div class="step">
+  <h3>AC Entry &amp; In-Wall Rough-In</h3>
+  <div class="body">
+    The enclosure is recessed in the wall and fed by direct Romex (NM-B) — a permanent hardwired connection.
+    <ul style="margin: 6px 0 0; padding-left: 20px;">
+      <li><strong>Keep the box accessible.</strong> A PSU and splices live in here — don't drywall over it. Trim the wall opening so the door sits flush and swings fully open.</li>
+      <li><strong>Heat.</strong> Real load is well under the PSU's 450 W (LED draw ~150–300 W) and the box is oversized, so a closed in-wall box is fine — just don't pack insulation against it. Add vent holes top + bottom into the stud bay if it ever runs warm.</li>
+      <li><strong>Romex routing.</strong> Run the NM-B continuously from its source to the box, in through a top-wall knockout on an NM cable clamp (that clamp is the strain relief). Staple within ~12″ of the box and every ~4½ ft; protect it at framing pass-throughs with setback or a nail plate.</li>
+      <li><strong>Inline fuse + ground.</strong> The hot passes through the 5 A inline fuse holder before the PSU's L terminal. The NM-B ground lands on the chassis ground bond and pigtails to the PSU's ⏚.</li>
+      <li><strong>The 18/3 strip runs.</strong> Five 18/3 cables exit the top of the box and run up the wall cavity to the ceiling joists. Keep them off the NM-B run (separate holes, a little spacing where parallel), support every ~3–4 ft, and label each (Strip 1–5) before fishing. Staple to the framing or pull through the FMC in the shopping list — your call.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step">
+  <h3>Chassis Ground Bond</h3>
+  <div class="body">
+    The AC green/ground wire <strong>must</strong> bond to the enclosure metal. Don't rely on the NM cable clamp's locknut alone — that's for mechanical fit, not a guaranteed electrical bond.
+    <ul style="margin: 6px 0 0; padding-left: 20px;">
+      <li><strong>Use an M6 star washer</strong> (external tooth) — the teeth bite through any factory paint into bare metal. A spring/split washer alone won't do this reliably.</li>
+      <li><strong>Wire termination:</strong> strip ~¼″ of the green wire, crimp a pre-insulated M6 ring terminal onto it using regular pliers (squeeze the metal barrel flat onto the wire strands). Stack: enclosure → star washer → ring terminal → screw. Tighten firmly.</li>
+      <li><strong>Optional belt+suspenders:</strong> add an M6 spring washer above the ring terminal for vibration retention. Not needed for a static enclosure but cheap insurance.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step">
+  <h3>Verify Concord Button LED Before Wiring</h3>
+  <div class="body">
+    The panel label reads &quot;5–12V DC LED LIGHT.&quot; A bare LED can't accept that voltage range, so the button <em>almost certainly</em> has internal current limiting. But verify before powering it from the 5V driver-module output:
+    <ul style="margin: 6px 0 0; padding-left: 20px;">
+      <li><strong>Multimeter check:</strong> set to diode-test mode, measure across the LED terminals both ways. If you see ~2V drop one direction and OL the other, plus a few kΩ resistance on the resistance setting — it has internal limiting. Drive it directly from the LED driver module's OUT+ / OUT−.</li>
+      <li><strong>If it measures like a bare LED</strong> (~0.6V diode drop, very low resistance) — you'd need to add a ~470 Ω resistor in series with the LED. Easiest no-solder approach: use two heat-shrink butt-splice connectors with the resistor leads in between, inline on the wire run.</li>
+      <li>Either way, the driver module wiring (VCC to 5V, GND to Power GND, SIG to GPIO 15) stays the same.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step">
+  <h3>Door Hinge Cable Management</h3>
+  <div class="body">
+    Panels + display are on the door; their wiring crosses the hinge as a single flexible umbilical.
+    <ul style="margin: 6px 0 0; padding-left: 20px;">
+      <li><strong>Bundle the 3 panel cables + 4-wire display I²C run</strong> into one flexible umbilical with spiral wrap or fabric sleeving — easier on the hinge than 4 loose cables.</li>
+      <li><strong>Service loop</strong>: route from each panel + display toward the hinge, then a loose arc across to the backplate. With the door open ~110°, there should be zero tension. With the door closed, the slack tucks behind the door frame.</li>
+      <li><strong>Anchor on both sides</strong>: cable clamp / adhesive mount on the door's interior near the hinge, and another on the backplate near where the cables reach the ESP32. Anchors absorb the flex stress so wire-to-terminal joints aren't getting tugged on every door swing.</li>
+      <li><strong>Optional but recommended</strong>: terminate panel pigtails with a small in-line connector (JST-XH or Dupont) near the hinge crossing. That way the door can be removed for service without unsoldering anything.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step">
+  <h3>I²C Bus Wiring (two displays)</h3>
+  <div class="body">
+    Both 4-digit displays sit on one I²C bus. A 4-wire run (SDA / SCL / 3V3 / GND) leaves the ESP32, crosses the door hinge to display #1 (CCT), then a short 4-wire jumper daisy-chains to display #2 (lumens).
+    <ul style="margin: 6px 0 0; padding-left: 20px;">
+      <li><strong>Pins:</strong> SDA = GPIO 21, SCL = GPIO 22. Two displays cost no extra GPIOs — I²C is a bus.</li>
+      <li><strong>Addresses:</strong> CCT display = <code>0x70</code> (default, jumpers open). Lumens display = <code>0x71</code> — bridge its <code>A0</code> address jumper. Label both before mounting.</li>
+      <li><strong>Pull-ups:</strong> Each Adafruit backpack has on-board ~10 kΩ I²C pull-ups; with two backpacks they sit in parallel (~5 kΩ effective) — still fine for this short 100 kHz bus. <strong>Do not add external pull-ups.</strong></li>
+      <li><strong>Voltage:</strong> 3.3 V. No level shifter needed (the backpacks also accept 5 V via VCC).</li>
+      <li><strong>Wire colors (convention):</strong> SDA = yellow, SCL = blue, 3V3 = red, GND = black. Use these consistently across the umbilical so the bus is visually traceable.</li>
+      <li><strong>Bus length:</strong> Backplate-to-displays run is &lt;2 ft total — well within I²C's practical limit at 100 kHz. If you ever see comms errors, drop to 50 kHz in firmware before adding hardware.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step">
+  <h3>Displays: Mounting &amp; Bezels</h3>
+  <div class="body">
+    Both displays live on the door alongside the Concord panels — part of the panel array, not the backplate. Mount them as a matched pair, a small instrument cluster.
+    <ul style="margin: 6px 0 0; padding-left: 20px;">
+      <li><strong>Window cutouts:</strong> Each 0.56″ Adafruit backpack reads cleanly behind a rectangular window ~30 mm wide × 14 mm tall. Cut two — one per display — and deburr the edges.</li>
+      <li><strong>The labels:</strong> A permanent label beside each window — &quot;K&quot; for the CCT display, &quot;lm&quot; for the lumens display. Options: (a) vinyl cutter / Cricut + matte black vinyl (cheapest, removable); (b) laser-engraved aluminum bezel ring (most premium); (c) 3D-printed bezel with raised text; (d) screen-printed if you're sending the panel out anyway. Authentic Apollo-era panels labeled their numeric windows externally — a lit-up unit label would not read as more correct.</li>
+      <li><strong>Brightness:</strong> The HT16K33 has 16 levels (0–15). Default is max — usually too bright for a dim room. <code>display.setBrightness(3)</code> reads as &quot;instrument lit,&quot; not &quot;screen on.&quot; Match both displays.</li>
+      <li><strong>Mounting:</strong> Either through-panel via M2.5 standoffs (cleanest, requires precise cutout alignment) or foam-tape behind a bezel ring (forgiving, works regardless of cutout precision). Foam tape is fine — the displays weigh almost nothing.</li>
+      <li><strong>Off behavior:</strong> When <code>master_on</code> is false, blank both displays via <code>display.clear(); display.writeDisplay();</code>. The dark windows double as a power-status indicator.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step">
+  <h3>Computing the Readouts</h3>
+  <div class="body">
+    Both numbers are computed, not measured (see CLAUDE.md for the canonical formulas).
+    <p style="margin: 10px 0 2px;"><strong>CCT</strong> — the warm/cool mix one fully-enabled bay would emit:</p>
+    <pre style="background: var(--accent-soft); padding: 10px 14px; border-radius: 4px; font-size: 0.92em; margin: 4px 0 8px; overflow-x: auto;">warm_eff = warm_bias  * warm_enable
+cool_eff = cool_bias  * cool_enable
+total    = warm_eff + cool_eff
+if total == 0:
+    cct_display.blank()
+else:
+    cct = 3200 + (cool_eff / total) * (6500 - 3200)
+    cct_display.print(round(cct))</pre>
+    <p style="margin: 10px 0 2px;"><strong>Lumens</strong> — the whole-system total across all 10 PWM channels:</p>
+    <pre style="background: var(--accent-soft); padding: 10px 14px; border-radius: 4px; font-size: 0.92em; margin: 4px 0 8px; overflow-x: auto;">LUMENS_FULL_PER_CHANNEL = 2310      # 15.4 m installed × 750 lm/m per color ÷ 5 strips
+total_lm = sum( (duty / duty_max) * LUMENS_FULL_PER_CHANNEL
+                for each of the 10 PWM channels )
+if (not master_on) or total_lm == 0:
+    lm_display.blank()
+elif total_lm &lt; 10000:
+    lm_display.print(total_lm)          # 1..9999, no decimal point
+else:
+    lm_display.print(total_lm / 10000)  # 23,100 -&gt; "2.310", decimal point lit (system max)</pre>
+    Constants <code>3200</code> / <code>6500</code> K (the FilmGrade Hybrid strip's tungsten + daylight endpoints per datasheet PN 3002.HY) and <code>LUMENS_FULL_PER_CHANNEL</code> are derived nominals — tune against a meter once the strips are installed. The CCT readout reflects one fully-enabled bay (bay-by-bay differences don't change it); the lumens readout is the actual summed output of all five bays.
+  </div>
+</div>
+
+<div class="step">
+  <h3>Door Clearance Check</h3>
+  <div class="body">The Concord switches/pots/buttons project ~1–1.5″ behind the panels into the enclosure interior when the door is closed. With 6″ enclosure depth minus 1.2″ PSU minus ~1.5″ door projection, you've got ~3.3″ of clear airspace in the middle — plenty for wire routing. Just keep tall components (ESP32 + adapter on standoffs ≈ 2″) off the direct path behind the panels; the layout above puts the ESP32 well below the panel area.</div>
+</div>
+
+<div class="step">
+  <h3>Future-Proof Capacity</h3>
+  <div class="body">
+    <ul style="margin: 0; padding-left: 20px;">
+      <li><strong>MOSFET channels:</strong> MOS-3 has 2 spare channels — enough to drive a 6th LED strip or a separate accent channel.</li>
+      <li><strong>Distribution strips:</strong> 12-pos blocks give ~2 spares each for +24V and Power GND.</li>
+      <li><strong>ESP32 GPIOs:</strong> All 24 usable GPIOs are allocated on the 38-pin board. To add another sensor or output later, hang it on the existing I²C bus (the two displays sit there today; plenty of bus capacity left). An MCP23017 expander or any I²C peripheral would slot in cleanly without re-wiring anything.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step">
+  <h3>Upgrade Path: Bus Bars</h3>
+  <div class="body">If you later want the boutique-aerospace look inside the enclosure, swap the +24V and Power GND euro strips for marine-style tinned copper bus bars (Blue Sea 2300-series or similar). Same role, fancier hardware. Requires adding a ring-terminal crimper to your kit.</div>
+</div>
+
+<footer style="margin-top: 60px; text-align: center; color: var(--ink-soft); font-size: 0.8em;">
+  Apollo Lighting Control · Backplate Build Guide · Living document — update as the build evolves
+</footer>
+
+<script>
+(function() {
+  const STORAGE_KEY = 'apolloBackplate.shopList.v1';
+
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+    catch (e) { return {}; }
+  }
+  function saveState(s) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+    catch (e) { /* ignore quota errors */ }
+  }
+  function keyForRow(row) {
+    const cells = row.querySelectorAll('td');
+    if (cells.length < 2) return null;
+    // Use the item description (2nd column) as the stable key.
+    // Trim and cap length to keep keys reasonable.
+    return cells[1].textContent.trim().replace(/\s+/g, ' ').substring(0, 120);
+  }
+  function updateProgress() {
+    const boxes = document.querySelectorAll('.shop-check');
+    const checked = document.querySelectorAll('.shop-check:checked').length;
+    const el = document.getElementById('shop-progress');
+    if (el) el.textContent = checked + ' / ' + boxes.length;
+  }
+  function init() {
+    const state = loadState();
+    document.querySelectorAll('.shop-check').forEach(function(cb) {
+      const row = cb.closest('tr');
+      if (!row) return;
+      const key = keyForRow(row);
+      if (!key) return;
+      cb.dataset.key = key;
+      if (state[key]) {
+        cb.checked = true;
+        row.classList.add('shop-checked');
+      }
+      cb.addEventListener('change', function() {
+        const k = cb.dataset.key;
+        const s = loadState();
+        if (cb.checked) {
+          s[k] = true;
+          row.classList.add('shop-checked');
+        } else {
+          delete s[k];
+          row.classList.remove('shop-checked');
+        }
+        saveState(s);
+        updateProgress();
+      });
+    });
+    updateProgress();
+
+    const resetBtn = document.getElementById('shop-reset');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', function() {
+        if (!confirm('Uncheck all shopping list items? This clears your saved progress.')) return;
+        saveState({});
+        document.querySelectorAll('.shop-check').forEach(function(cb) {
+          cb.checked = false;
+          const row = cb.closest('tr');
+          if (row) row.classList.remove('shop-checked');
+        });
+        updateProgress();
+      });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+</body>
+</html>

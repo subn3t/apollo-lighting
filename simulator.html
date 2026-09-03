@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apollo Lighting — Backplate Wiring Simulator</title>
+<style>
+  :root {
+    --bg: #f7f5ef;
+    --ink: #1c1f24;
+    --ink-soft: #4a4f57;
+    --rule: #d8d4c8;
+    --paper: #fff;
+    --accent: #1a3d6e;
+    --accent-soft: #e3eaf2;
+    --ok: #2f7d4f;
+    --warn: #b07d18;
+    --bad: #b53127;
+    --gray-wire: #c9c5b9;
+    --mosfet-bg: #d8e6e6;  --mosfet-line: #4d6b6b;
+    --esp-bg: #d6e0ec;     --esp-line: #3a5a7a;
+    --buck-bg: #f1e0b5;    --buck-line: #a47a2a;
+    --psu-bg: #f0ece2;     --psu-line: #8a8473;
+    --led-bg: #ead8e3;     --led-line: #6b3a55;
+    --pwr-bg: #ffe7bf;     --pwr-line: #b8842a;
+    --sig-bg: #dde2ec;     --sig-line: #5a6b85;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+  code, .mono { font-family: 'Consolas', 'Menlo', monospace; }
+
+  /* ===== Header ===== */
+  header {
+    border-bottom: 3px solid var(--accent);
+    padding: 10px 20px;
+    background: var(--paper);
+    flex: 0 0 auto;
+  }
+  header h1 {
+    margin: 0;
+    color: var(--accent);
+    font-size: 1.25em;
+    letter-spacing: 0.4px;
+  }
+  header .subtitle {
+    color: var(--ink-soft);
+    font-size: 0.82em;
+    margin-top: 2px;
+  }
+
+  /* ===== Layout ===== */
+  .app { display: flex; flex: 1 1 auto; min-height: 0; }
+
+  .sidebar {
+    flex: 0 0 372px;
+    background: var(--paper);
+    border-right: 1px solid var(--rule);
+    overflow-y: auto;
+    padding: 14px;
+  }
+
+  .main { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+
+  /* ===== Toolbar ===== */
+  .toolbar {
+    flex: 0 0 auto;
+    background: var(--paper);
+    border-bottom: 1px solid var(--rule);
+    padding: 9px 16px;
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    flex-wrap: wrap;
+  }
+  .tool-group { display: flex; align-items: center; gap: 8px; }
+  .tool-label {
+    font-size: 0.7em;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--ink-soft);
+    font-weight: 700;
+  }
+
+  .gauge-btn, .color-btn {
+    cursor: pointer;
+    border: 1.5px solid var(--rule);
+    background: var(--bg);
+    border-radius: 5px;
+    padding: 0;
+  }
+  .gauge-btn {
+    height: 30px;
+    width: 64px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-family: 'Consolas', monospace;
+    font-size: 0.68em;
+    color: var(--ink-soft);
+  }
+  .gauge-btn .gline { background: var(--ink-soft); border-radius: 4px; width: 38px; }
+  .gauge-btn.sel {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .gauge-btn.sel .gline { background: var(--accent); }
+
+  .color-btn {
+    height: 30px; width: 30px;
+    position: relative;
+  }
+  .color-btn.sel { border-color: var(--ink); box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent); }
+  .color-btn .cname {
+    position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%);
+    font-size: 0.62em; color: var(--ink-soft); white-space: nowrap;
+  }
+
+  .hint {
+    font-size: 0.78em;
+    color: var(--ink-soft);
+    flex: 1 1 240px;
+    min-width: 200px;
+  }
+  .btn {
+    cursor: pointer;
+    border: 1.5px solid var(--rule);
+    background: var(--bg);
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-size: 0.78em;
+    color: var(--ink-soft);
+  }
+  .btn:hover { border-color: var(--bad); color: var(--bad); }
+
+  /* ===== Stage ===== */
+  .stage-scroll {
+    flex: 1 1 auto;
+    overflow: auto;
+    background:
+      repeating-linear-gradient(0deg, transparent 0 49px, rgba(0,0,0,.035) 49px 50px),
+      repeating-linear-gradient(90deg, transparent 0 49px, rgba(0,0,0,.035) 49px 50px),
+      var(--bg);
+  }
+  .stage {
+    position: relative;
+    margin: 26px;
+    cursor: crosshair;
+  }
+
+  .comp {
+    position: absolute;
+    border: 1.5px solid var(--ink);
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.12);
+    z-index: 2;
+  }
+  .comp .ctitle {
+    position: absolute;
+    left: 0; right: 0; top: 50%;
+    transform: translateY(-50%);
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.92em;
+    letter-spacing: 0.4px;
+    color: var(--ink);
+    pointer-events: none;
+  }
+  .comp .ccap {
+    position: absolute;
+    left: 0; right: 0;
+    text-align: center;
+    font-family: 'Consolas', monospace;
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    color: var(--ink-soft);
+    opacity: 0.75;
+    pointer-events: none;
+  }
+  .comp.k-psu    { background: var(--psu-bg);    border-color: var(--psu-line); }
+  .comp.k-pwr    { background: var(--pwr-bg);    border-color: var(--pwr-line); }
+  .comp.k-sig    { background: var(--sig-bg);    border-color: var(--sig-line); }
+  .comp.k-esp    { background: var(--esp-bg);    border-color: var(--esp-line); }
+  .comp.k-buck   { background: var(--buck-bg);   border-color: var(--buck-line); }
+  .comp.k-led    { background: var(--led-bg);    border-color: var(--led-line); }
+  .comp.k-mosfet { background: var(--mosfet-bg); border-color: var(--mosfet-line); }
+
+  .pin {
+    position: absolute;
+    height: 22px;
+    background: var(--paper);
+    border: 1.5px solid var(--ink);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Consolas', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--ink);
+    cursor: crosshair;
+    z-index: 3;
+    user-select: none;
+  }
+  .pin:hover { border-color: var(--accent); background: var(--accent-soft); z-index: 4; }
+  .pin.ext   { opacity: 0.42; border-style: dashed; }
+  .pin.spare { opacity: 0.58; border-style: dashed; }
+  .pin.samenet { background: #fff4d6; border-color: var(--warn); }
+  .pin.endpoint { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent); z-index: 5; }
+  .pin.hot { background: #d6f0dd; border-color: var(--ok); box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--ok); z-index: 6; }
+
+  svg.wires {
+    position: absolute;
+    left: 0; top: 0;
+    pointer-events: none;
+    z-index: 5;
+    overflow: visible;
+  }
+
+  #tooltip {
+    position: fixed;
+    z-index: 999;
+    background: var(--ink);
+    color: #fff;
+    font-size: 11px;
+    line-height: 1.4;
+    padding: 6px 9px;
+    border-radius: 4px;
+    max-width: 250px;
+    pointer-events: none;
+    display: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  }
+  #tooltip .tt-title { font-family: 'Consolas', monospace; font-weight: 700; }
+  #tooltip .tt-role { color: #cdd4dd; margin-top: 2px; }
+  #tooltip .tt-net  { color: #9fb4cc; margin-top: 3px; font-size: 10px; }
+
+  /* ===== Sidebar content ===== */
+  .status-card {
+    border: 1.5px solid var(--rule);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 14px;
+  }
+  .status-card.s-progress { background: #fbf6e8; border-color: #e6d49a; }
+  .status-card.s-near     { background: #fbf2e0; border-color: var(--warn); }
+  .status-card.s-done     { background: #e8f4ec; border-color: var(--ok); }
+  .status-state {
+    font-size: 1.02em;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .s-progress .status-state { color: var(--warn); }
+  .s-near .status-state     { color: var(--warn); }
+  .s-done .status-state     { color: var(--ok); }
+  .status-sub { font-size: 0.8em; color: var(--ink-soft); margin-top: 2px; }
+  .progress-track {
+    height: 9px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    margin-top: 9px;
+    overflow: hidden;
+  }
+  .progress-fill { height: 100%; background: var(--ok); width: 0%; transition: width .2s; }
+  .s-progress .progress-fill { background: var(--warn); }
+  .status-counts { display: flex; gap: 14px; margin-top: 9px; font-size: 0.78em; }
+  .status-counts b { font-size: 1.15em; }
+  .cnt-ok b { color: var(--ok); }
+  .cnt-prob b { color: var(--bad); }
+
+  .panel { margin-bottom: 16px; }
+  .panel h2 {
+    font-size: 0.74em;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--accent);
+    border-bottom: 1.5px solid var(--rule);
+    padding-bottom: 4px;
+    margin: 0 0 8px;
+  }
+
+  .empty-note { font-size: 0.8em; color: var(--ink-soft); font-style: italic; padding: 4px 0; }
+
+  /* connection rows */
+  .conn-row {
+    border: 1.5px solid var(--rule);
+    border-radius: 5px;
+    padding: 6px 7px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    background: var(--paper);
+  }
+  .conn-row:hover { border-color: var(--ink-soft); }
+  .conn-row.sel { border-color: var(--accent); background: var(--accent-soft); }
+  .conn-line1 { display: flex; align-items: center; gap: 6px; }
+  .conn-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+  .d-correct   { background: var(--ok); }
+  .d-wrongspec { background: var(--bad); }
+  .d-duplicate { background: var(--warn); }
+  .d-extra     { background: #8a8780; }
+  .conn-swatch { width: 13px; height: 13px; border-radius: 3px; border: 1px solid rgba(0,0,0,.35); flex: 0 0 auto; }
+  .conn-text { flex: 1 1 auto; font-size: 0.78em; line-height: 1.3; }
+  .conn-gauge {
+    font-family: 'Consolas', monospace;
+    font-size: 0.68em;
+    color: var(--ink-soft);
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 1px 4px;
+    flex: 0 0 auto;
+  }
+  .conn-x {
+    flex: 0 0 auto;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--ink-soft);
+    font-size: 1em;
+    padding: 0 2px;
+    line-height: 1;
+  }
+  .conn-x:hover { color: var(--bad); }
+  .conn-note {
+    font-size: 0.72em;
+    margin-top: 3px;
+    padding-left: 15px;
+  }
+  .note-bad  { color: var(--bad); }
+  .note-warn { color: var(--warn); }
+
+  /* checklist */
+  .ck-group { margin-bottom: 9px; }
+  .ck-group-h {
+    font-size: 0.74em;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 7px 0 3px;
+  }
+  .ck-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 0.77em;
+    padding: 3px 4px;
+    border-radius: 4px;
+    cursor: default;
+    line-height: 1.32;
+  }
+  .ck-row:hover { background: var(--accent-soft); }
+  .ck-mark { flex: 0 0 auto; font-family: 'Consolas', monospace; font-weight: 700; width: 13px; text-align: center; }
+  .m-done { color: var(--ok); }
+  .m-todo { color: var(--ink-soft); }
+  .m-bad  { color: var(--bad); }
+  .ck-body { flex: 1 1 auto; }
+  .ck-spec { font-family: 'Consolas', monospace; font-size: 0.92em; color: var(--ink-soft); }
+  .ck-prob { color: var(--bad); font-size: 0.95em; }
+  .ck-foot {
+    font-size: 0.72em;
+    color: var(--ink-soft);
+    font-style: italic;
+    margin-top: 5px;
+    padding: 5px 7px;
+    background: var(--bg);
+    border-radius: 4px;
+  }
+  .legend-row {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    font-size: 0.72em; color: var(--ink-soft);
+    margin-top: 4px;
+  }
+  .legend-row span { display: flex; align-items: center; gap: 4px; }
+  .lg-line { width: 22px; height: 3px; border-radius: 2px; }
+
+  #toast {
+    position: fixed;
+    bottom: 22px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: #fff;
+    font-size: 0.82em;
+    padding: 8px 16px;
+    border-radius: 5px;
+    z-index: 998;
+    opacity: 0;
+    transition: opacity .2s;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Apollo Lighting — Backplate Wiring Simulator</h1>
+  <div class="subtitle">Dry-run the low-voltage backplate wiring before you pick up a crimper. Draw each wire pin-to-pin; the build checks itself as you go.</div>
+</header>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <div class="toolbar" id="toolbar"></div>
+    <div class="stage-scroll">
+      <div class="stage" id="stage">
+        <svg class="wires" id="wires"></svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+<div id="toast"></div>
+
+<script>
+/* ============================================================
+   Apollo Lighting — Backplate Wiring Simulator
+   Single-file. No dependencies. State persists in localStorage.
+   ============================================================ */
+"use strict";
+
+/* ---- wire palette: only the gauges & colours this stage uses ---- */
+const GAUGES = {
+  "14": { label: "14 AWG", w: 8.0 },   // PSU DC output runs
+  "18": { label: "18 AWG", w: 5.4 },   // +24V / GND distribution
+  "22": { label: "22 AWG", w: 3.4 }    // signal-level jumpers
+};
+const COLORS = {
+  red:    { hex: "#b5392f", name: "red" },     // +24V / +5V
+  black:  { hex: "#2b2b2d", name: "black" },   // ground
+  yellow: { hex: "#caa02a", name: "yellow" },  // signal
+  blue:   { hex: "#2f6aa4", name: "blue" }     // signal
+};
+const GRAY = "#c9c5b9";
+const SIG = ["yellow", "blue"];   // acceptable colours for signal-level wires
+
+/* ---- pin helper ---- */
+function p(id, label, role, opts) { return Object.assign({ id, label, role }, opts || {}); }
+function rail(prefix, letter, n, net, role, opts) {
+  const a = [];
+  for (let i = 1; i <= n; i++) a.push(p(prefix + i, letter + i, role, Object.assign({ net }, opts || {})));
+  return a;
+}
+
+/* ---- component layout (stage coordinates, px) ---- */
+const COMPONENTS = [
+  {
+    id: "psu", title: "PSU", kind: "psu", x: 260, y: 40, w: 380, h: 210,
+    caps: { top: "◀ DC OUT (upper)  ·  AC IN (lower)" },
+    edges: {
+      left: [
+        p("psu.vpos", "V+", "24 V DC output, positive — to the POWER block +24 V rail", { net: "psu.vpos" }),
+        p("psu.vneg", "V−", "24 V DC output, negative — to the POWER block GND rail", { net: "psu.vneg" }),
+        p("psu.earth", "⏚", "Protective earth / chassis-ground bond (external)", { ext: true }),
+        p("psu.N", "N", "AC neutral in (external)", { ext: true }),
+        p("psu.L", "L", "AC line (hot) in — from the inline fuse holder (external)", { ext: true })
+      ]
+    }
+  },
+  {
+    id: "pwr", title: "POWER block", kind: "pwr", x: 790, y: 750, w: 480, h: 96,
+    caps: { top: "A-RAIL  ·  +24 V", bottom: "B-RAIL  ·  POWER GND" },
+    edges: {
+      top:    rail("pwr.a", "A", 12, "pwr.v24", "+24 V distribution rail — one electrical node, 12 screw terminals"),
+      bottom: rail("pwr.b", "B", 12, "pwr.gnd", "Power-ground distribution rail — one node, 12 screw terminals")
+    }
+  },
+  {
+    id: "esp", title: "ESP32 + screw-terminal adapter", kind: "esp", x: 30, y: 722, w: 724, h: 152,
+    caps: { top: "POWER · STATUS · (panel switches, pots & I²C land here externally)", bottom: "PWM OUTPUTS  →  MOSFET trigger inputs" },
+    edges: {
+      top: [
+        p("esp.vin", "VIN", "5 V supply input — from the buck converter", { net: "esp.vin" }),
+        p("esp.gnd", "GND", "Ground — lands on the SIGNAL block device-ground rail", { net: "esp.gnd" }),
+        p("esp.g15", "15", "GPIO 15 — drives the MASTER RESET button-LED driver", { net: "esp.g15" }),
+        p("esp.3v3", "3V3", "3.3 V out — feeds pot tops & I²C (external umbilical)", { ext: true }),
+        p("esp.g36", "36", "GPIO 36 — WARM BIAS pot wiper (external)", { ext: true }),
+        p("esp.g39", "39", "GPIO 39 — COOL BIAS pot wiper (external)", { ext: true }),
+        p("esp.g34", "34", "GPIO 34 — BAY 1 ENABLE (external)", { ext: true }),
+        p("esp.g35", "35", "GPIO 35 — BAY 2 ENABLE (external)", { ext: true }),
+        p("esp.g32", "32", "GPIO 32 — BAY 3 ENABLE (external)", { ext: true }),
+        p("esp.g33", "33", "GPIO 33 — BAY 4 ENABLE (external)", { ext: true }),
+        p("esp.g27", "27", "GPIO 27 — BAY 5 ENABLE (external)", { ext: true }),
+        p("esp.g26", "26", "GPIO 26 — STANDBY toggle (external)", { ext: true }),
+        p("esp.g23", "23", "GPIO 23 — WARM ENABLE toggle (external)", { ext: true }),
+        p("esp.g5",  "5",  "GPIO 5 — COOL ENABLE toggle (external)", { ext: true }),
+        p("esp.g0",  "0",  "GPIO 0 — MASTER RESET button (external)", { ext: true }),
+        p("esp.g21", "21", "GPIO 21 — I²C SDA to displays (external)", { ext: true }),
+        p("esp.g22", "22", "GPIO 22 — I²C SCL to displays (external)", { ext: true })
+      ],
+      bottom: [
+        p("esp.g14", "14", "GPIO 14 — Strip 1 WARM PWM", { net: "esp.g14" }),
+        p("esp.g12", "12", "GPIO 12 — Strip 1 COOL PWM", { net: "esp.g12" }),
+        p("esp.g13", "13", "GPIO 13 — Strip 2 WARM PWM", { net: "esp.g13" }),
+        p("esp.g4",  "4",  "GPIO 4 — Strip 2 COOL PWM",  { net: "esp.g4" }),
+        p("esp.g16", "16", "GPIO 16 — Strip 3 WARM PWM", { net: "esp.g16" }),
+        p("esp.g17", "17", "GPIO 17 — Strip 3 COOL PWM", { net: "esp.g17" }),
+        p("esp.g18", "18", "GPIO 18 — Strip 4 WARM PWM", { net: "esp.g18" }),
+        p("esp.g19", "19", "GPIO 19 — Strip 4 COOL PWM", { net: "esp.g19" }),
+        p("esp.g25", "25", "GPIO 25 — Strip 5 WARM PWM", { net: "esp.g25" }),
+        p("esp.g2",  "2",  "GPIO 2 — Strip 5 COOL PWM",  { net: "esp.g2" })
+      ]
+    }
+  },
+  {
+    id: "buck", title: "Buck 24→5 V", kind: "buck", x: 1306, y: 734, w: 150, h: 128,
+    caps: { top: "◀IN 24V      5V OUT▶" },
+    edges: {
+      left: [
+        p("buck.inp", "VIN+", "+24 V input — from the POWER block +24 V rail", { net: "buck.inp" }),
+        p("buck.inn", "VIN−", "Input ground — to the POWER block GND rail. Same internal node as VOUT− on a non-isolated buck", { net: "buck.gnd" })
+      ],
+      right: [
+        p("buck.outp", "VOUT+", "+5 V regulated output — to ESP32 VIN & LED driver VIN+", { net: "buck.outp" }),
+        p("buck.outn", "VOUT−", "Output ground — the same internal node as VIN−; a non-isolated buck needs no separate wire here", { net: "buck.gnd" })
+      ]
+    }
+  },
+  {
+    id: "led", title: "LED driver", kind: "led", x: 30, y: 512, w: 200, h: 118,
+    caps: { top: "POWER + SIGNAL IN", bottom: "OUTPUT  →  button LED (external)" },
+    edges: {
+      top: [
+        p("led.vcc", "VIN+", "+5 V supply — from the buck +5 V output", { net: "led.vcc" }),
+        p("led.vinn", "VIN−", "Input ground — to the POWER block GND rail. Same internal node as the control GND pin (non-isolated module)", { net: "led.gnd" }),
+        p("led.sig", "PWM", "TRIG / PWM logic input — from ESP32 GPIO 15", { net: "led.sig" }),
+        p("led.gnd", "GND", "Control-signal ground — same internal node as VIN−; one wire to POWER GND grounds both", { net: "led.gnd" })
+      ],
+      bottom: [
+        p("led.outp", "VOUT+", "Switched output to MASTER RESET button-LED anode (external)", { ext: true }),
+        p("led.outn", "VOUT−", "Switched output to MASTER RESET button-LED cathode — not a ground (external)", { ext: true })
+      ]
+    }
+  },
+  {
+    id: "sig", title: "SIGNAL block", kind: "sig", x: 30, y: 40, w: 170, h: 380,
+    caps: { top: "◀ A: COMMONS      B: DEV-GND ▶" },
+    edges: {
+      right: rail("sig.b", "B", 12, "sig.gnd", "Device-ground rail — ESP32 GND, display GND return & the star-bridge land here"),
+      left:  rail("sig.a", "A", 12, "sig.com", "Switch-commons / pot-low rail — fed by the panel umbilical (external)", { ext: true })
+    }
+  }
+];
+
+/* MOSFET trigger boards — built from a template.
+   Real hardware: ANMBEST 4-channel opto-isolated MOSFET board. Each channel's
+   PWM input is optically isolated, so the input-side ground is NOT common with
+   the 24 V power ground (DC−) — and the four input grounds (GND1–GND4) are not
+   bonded to each other on the board either. Jumper GND1–GND4 together per board
+   and run one wire to the SIGNAL device-ground rail; DC− goes to POWER GND. */
+const MOSFET_CHANNELS = {
+  m1: ["Strip 1 WARM", "Strip 1 COOL", "Strip 2 WARM", "Strip 2 COOL"],
+  m2: ["Strip 3 WARM", "Strip 3 COOL", "Strip 4 WARM", "Strip 4 COOL"],
+  m3: ["Strip 5 WARM", "Strip 5 COOL", "spare", "spare"]
+};
+[["m1", 30, "MOSFET 1"], ["m2", 400, "MOSFET 2"], ["m3", 770, "MOSFET 3"]].forEach(function (m) {
+  const id = m[0], x = m[1], title = m[2], ch = MOSFET_CHANNELS[id];
+  const ins = [
+    p(id + ".vin", "DC+", "+24 V load supply in — from the POWER block +24 V rail", { net: id + ".vin" }),
+    p(id + ".gnd", "DC−", "24 V power-ground return — to the POWER block GND rail. Opto-isolated from the signal ground on this board.", { net: id + ".gnd" }),
+    p(id + ".sgnd", "S-GND", "Signal ground — jumper the board's GND1–GND4 terminals together, then run one wire from there to the SIGNAL block device-ground rail.", { net: id + ".sgnd" })
+  ];
+  const outs = [];
+  for (let i = 0; i < 4; i++) {
+    const spare = ch[i] === "spare";
+    ins.push(p(id + ".in" + (i + 1), "PWM" + (i + 1),
+      "Channel " + (i + 1) + " PWM trigger in — " + (spare ? "spare (unused)" : ch[i]),
+      spare ? { spare: true } : { net: id + ".in" + (i + 1) }));
+    outs.push(p(id + ".out" + (i + 1), "OUT" + (i + 1),
+      "Channel " + (i + 1) + " switched output pair OUT+/OUT− — " + (spare ? "spare" : ch[i] + " strip cable"),
+      { ext: true }));
+  }
+  COMPONENTS.push({
+    id: id, title: title, kind: "mosfet", x: x, y: 976, w: 320, h: 150,
+    caps: { top: "PWM IN  ·  +24 V  ·  SIGNAL GND", bottom: "SWITCHED OUTPUTS  →  strip cables (external)" },
+    edges: { top: ins, bottom: outs }
+  });
+});
+
+/* ---- flatten pins, index by id, record component + edge ---- */
+const PINS = {};
+const COMP_BY_ID = {};
+COMPONENTS.forEach(function (c) {
+  COMP_BY_ID[c.id] = c;
+  ["top", "bottom", "left", "right"].forEach(function (edge) {
+    (c.edges[edge] || []).forEach(function (pin) {
+      pin.comp = c.id; pin.edge = edge;
+      PINS[pin.id] = pin;
+    });
+  });
+});
+function netOf(pinId) { const pin = PINS[pinId]; return (pin && pin.net) || pinId; }
+function pinName(pinId) { const pin = PINS[pinId]; return COMP_BY_ID[pin.comp].title + " · " + pin.label; }
+
+/* ---- the build spec: 29 target connections ----
+   Each target is net-to-net. Steps map to the BACKPLATE.html wiring-flow table;
+   steps 14 & 15 are derived from the SIGNAL-block rail spec, not numbered rows.  */
+const STEP_TITLES = {
+  "2":  "Step 2 — PSU +V to POWER block",
+  "3":  "Step 3 — PSU −V to POWER block",
+  "4":  "Step 4 — +24 V distribution",
+  "5":  "Step 5 — Power-ground distribution",
+  "6":  "Step 6 — Star-ground bridge",
+  "7":  "Step 7 — PWM signal lines",
+  "9":  "Step 9 — Buck +5 V output",
+  "10": "Step 10 — LED driver ground",
+  "11": "Step 11 — Button-LED signal",
+  "14": "Step 14 — ESP32 ground landing  (derived)",
+  "15": "Step 15 — MOSFET signal-ground returns  (derived)"
+};
+const TARGETS = [
+  { step: "2", a: "psu.vpos", b: "pwr.v24", gauge: "14", colors: ["red"],   desc: "PSU +V → POWER block +24 V rail" },
+  { step: "3", a: "psu.vneg", b: "pwr.gnd", gauge: "14", colors: ["black"], desc: "PSU −V → POWER block GND rail" },
+
+  { step: "4", a: "pwr.v24", b: "m1.vin",   gauge: "18", colors: ["red"], desc: "POWER +24 V rail → MOSFET 1 VIN" },
+  { step: "4", a: "pwr.v24", b: "m2.vin",   gauge: "18", colors: ["red"], desc: "POWER +24 V rail → MOSFET 2 VIN" },
+  { step: "4", a: "pwr.v24", b: "m3.vin",   gauge: "18", colors: ["red"], desc: "POWER +24 V rail → MOSFET 3 VIN" },
+  { step: "4", a: "pwr.v24", b: "buck.inp", gauge: "18", colors: ["red"], desc: "POWER +24 V rail → Buck V+ IN" },
+
+  { step: "5", a: "pwr.gnd", b: "m1.gnd",   gauge: "18", colors: ["black"], desc: "POWER GND rail → MOSFET 1 DC− (24 V power ground)" },
+  { step: "5", a: "pwr.gnd", b: "m2.gnd",   gauge: "18", colors: ["black"], desc: "POWER GND rail → MOSFET 2 DC− (24 V power ground)" },
+  { step: "5", a: "pwr.gnd", b: "m3.gnd",   gauge: "18", colors: ["black"], desc: "POWER GND rail → MOSFET 3 DC− (24 V power ground)" },
+  { step: "5", a: "pwr.gnd", b: "buck.gnd", gauge: "18", colors: ["black"], desc: "POWER GND rail → Buck VIN−" },
+
+  { step: "6", a: "pwr.gnd", b: "sig.gnd", gauge: "18", colors: ["black"], desc: "POWER GND rail → SIGNAL GND rail (★ star bridge)" },
+
+  { step: "7", a: "esp.g14", b: "m1.in1", gauge: "22", colors: SIG, desc: "ESP32 GPIO 14 → MOSFET 1 IN1  (Strip 1 WARM)" },
+  { step: "7", a: "esp.g12", b: "m1.in2", gauge: "22", colors: SIG, desc: "ESP32 GPIO 12 → MOSFET 1 IN2  (Strip 1 COOL)" },
+  { step: "7", a: "esp.g13", b: "m1.in3", gauge: "22", colors: SIG, desc: "ESP32 GPIO 13 → MOSFET 1 IN3  (Strip 2 WARM)" },
+  { step: "7", a: "esp.g4",  b: "m1.in4", gauge: "22", colors: SIG, desc: "ESP32 GPIO 4 → MOSFET 1 IN4  (Strip 2 COOL)" },
+  { step: "7", a: "esp.g16", b: "m2.in1", gauge: "22", colors: SIG, desc: "ESP32 GPIO 16 → MOSFET 2 IN1  (Strip 3 WARM)" },
+  { step: "7", a: "esp.g17", b: "m2.in2", gauge: "22", colors: SIG, desc: "ESP32 GPIO 17 → MOSFET 2 IN2  (Strip 3 COOL)" },
+  { step: "7", a: "esp.g18", b: "m2.in3", gauge: "22", colors: SIG, desc: "ESP32 GPIO 18 → MOSFET 2 IN3  (Strip 4 WARM)" },
+  { step: "7", a: "esp.g19", b: "m2.in4", gauge: "22", colors: SIG, desc: "ESP32 GPIO 19 → MOSFET 2 IN4  (Strip 4 COOL)" },
+  { step: "7", a: "esp.g25", b: "m3.in1", gauge: "22", colors: SIG, desc: "ESP32 GPIO 25 → MOSFET 3 IN1  (Strip 5 WARM)" },
+  { step: "7", a: "esp.g2",  b: "m3.in2", gauge: "22", colors: SIG, desc: "ESP32 GPIO 2 → MOSFET 3 IN2  (Strip 5 COOL)" },
+
+  { step: "9",  a: "buck.outp", b: "esp.vin", gauge: "22", colors: ["red"],   desc: "Buck +5 V OUT → ESP32 VIN" },
+  { step: "9",  a: "buck.outp", b: "led.vcc", gauge: "22", colors: ["red"],   desc: "Buck +5 V OUT → LED driver VIN+" },
+  { step: "10", a: "pwr.gnd",   b: "led.gnd", gauge: "22", colors: ["black"], desc: "POWER GND rail → LED driver VIN−/GND (one shared node)" },
+  { step: "11", a: "esp.g15",   b: "led.sig", gauge: "22", colors: SIG,       desc: "ESP32 GPIO 15 → LED driver PWM" },
+
+  { step: "14", a: "esp.gnd", b: "sig.gnd", gauge: "22", colors: ["black"], derived: true, desc: "ESP32 GND → SIGNAL GND rail" },
+
+  { step: "15", a: "sig.gnd", b: "m1.sgnd", gauge: "22", colors: ["black"], derived: true, desc: "SIGNAL GND rail → MOSFET 1 signal ground (board GND1–GND4 jumpered)" },
+  { step: "15", a: "sig.gnd", b: "m2.sgnd", gauge: "22", colors: ["black"], derived: true, desc: "SIGNAL GND rail → MOSFET 2 signal ground (board GND1–GND4 jumpered)" },
+  { step: "15", a: "sig.gnd", b: "m3.sgnd", gauge: "22", colors: ["black"], derived: true, desc: "SIGNAL GND rail → MOSFET 3 signal ground (board GND1–GND4 jumpered)" }
+];
+TARGETS.forEach(function (t, i) { t.id = "t" + i; });
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const LS_KEY = "apolloBackplateSimV1";
+let connections = [];      // {id, a, b, gauge, color, points:[{x,y}]}
+let selectedId = null;
+let hoverConnId = null;
+let curGauge = "18";
+let curColor = "red";
+let connSeq = 1;
+
+/* ============================================================
+   DOM REFS + GEOMETRY
+   ============================================================ */
+const stage   = document.getElementById("stage");
+const wiresEl = document.getElementById("wires");
+const sidebar = document.getElementById("sidebar");
+const toolbar = document.getElementById("toolbar");
+const tooltip = document.getElementById("tooltip");
+const toastEl = document.getElementById("toast");
+
+const PIN_H = 22;
+const pinPos = {};   // pinId -> {x,y} in stage coords
+const pinEls = {};   // pinId -> DOM element
+let stageW = 0, stageH = 0;
+
+function layoutStage() {
+  let maxX = 0, maxY = 0;
+  COMPONENTS.forEach(function (c) {
+    maxX = Math.max(maxX, c.x + c.w);
+    maxY = Math.max(maxY, c.y + c.h);
+  });
+  stageW = maxX + 50;
+  stageH = maxY + 50;
+  stage.style.width = stageW + "px";
+  stage.style.height = stageH + "px";
+  wiresEl.setAttribute("width", stageW);
+  wiresEl.setAttribute("height", stageH);
+  wiresEl.setAttribute("viewBox", "0 0 " + stageW + " " + stageH);
+}
+
+/* edge pin width: fill the edge slot, capped */
+function pinWidthFor(c, edge, count) {
+  const span = (edge === "top" || edge === "bottom") ? c.w : c.h;
+  return Math.max(26, Math.min(46, span / count - 5));
+}
+
+/* ============================================================
+   RENDER: components + pins
+   ============================================================ */
+function renderDiagram() {
+  COMPONENTS.forEach(function (c) {
+    const box = document.createElement("div");
+    box.className = "comp k-" + c.kind;
+    box.style.left = c.x + "px";
+    box.style.top = c.y + "px";
+    box.style.width = c.w + "px";
+    box.style.height = c.h + "px";
+
+    const title = document.createElement("div");
+    title.className = "ctitle";
+    title.textContent = c.title;
+    box.appendChild(title);
+
+    if (c.caps && c.caps.top) {
+      const cap = document.createElement("div");
+      cap.className = "ccap";
+      cap.textContent = c.caps.top;
+      cap.style.top = "15px";
+      box.appendChild(cap);
+    }
+    if (c.caps && c.caps.bottom) {
+      const cap = document.createElement("div");
+      cap.className = "ccap";
+      cap.textContent = c.caps.bottom;
+      cap.style.bottom = "15px";
+      box.appendChild(cap);
+    }
+
+    ["top", "bottom", "left", "right"].forEach(function (edge) {
+      const arr = c.edges[edge] || [];
+      if (!arr.length) return;
+      const horizontal = (edge === "top" || edge === "bottom");
+      const span = horizontal ? c.w : c.h;
+      const pw = pinWidthFor(c, edge, arr.length);
+      arr.forEach(function (pin, i) {
+        const center = span * (i + 0.5) / arr.length;
+        const el = document.createElement("div");
+        el.className = "pin" + (pin.ext ? " ext" : "") + (pin.spare ? " spare" : "");
+        el.dataset.pinid = pin.id;
+        el.textContent = pin.label;
+        el.style.width = pw + "px";
+
+        let cx, cy;       // stage-coordinate centre of the pin
+        if (horizontal) {
+          el.style.left = (center - pw / 2) + "px";
+          cx = c.x + center;
+          if (edge === "top")    { el.style.top = (-PIN_H / 2) + "px";       cy = c.y; }
+          else                   { el.style.top = (c.h - PIN_H / 2) + "px";  cy = c.y + c.h; }
+        } else {
+          el.style.top = (center - PIN_H / 2) + "px";
+          cy = c.y + center;
+          if (edge === "left")   { el.style.left = (-pw / 2) + "px";         cx = c.x; }
+          else                   { el.style.left = (c.w - pw / 2) + "px";    cx = c.x + c.w; }
+        }
+        pinPos[pin.id] = { x: cx, y: cy };
+        pinEls[pin.id] = el;
+
+        el.addEventListener("mouseenter", function (e) { onPinEnter(pin, e); });
+        el.addEventListener("mousemove", moveTooltip);
+        el.addEventListener("mouseleave", onPinLeave);
+        box.appendChild(el);
+      });
+    });
+
+    stage.appendChild(box);
+  });
+}
+
+/* ============================================================
+   TOOLTIP + same-net highlighting
+   ============================================================ */
+function onPinEnter(pin, e) {
+  if (draw) return;     // suppressed mid-drag
+  tooltip.style.display = "block";
+  let html = '<div class="tt-title">' + COMP_BY_ID[pin.comp].title + " — " + pin.label + "</div>";
+  html += '<div class="tt-role">' + pin.role + "</div>";
+  const net = netOf(pin.id);
+  const mates = Object.keys(PINS).filter(function (k) { return netOf(k) === net; });
+  if (mates.length > 1) {
+    html += '<div class="tt-net">Shared node — ' + mates.length + " terminals at the same potential</div>";
+    mates.forEach(function (k) { if (pinEls[k]) pinEls[k].classList.add("samenet"); });
+  }
+  if (pin.ext)   html += '<div class="tt-net">External run — not part of this backplate stage</div>';
+  if (pin.spare) html += '<div class="tt-net">Spare channel — unused in this build</div>';
+  tooltip.innerHTML = html;
+  moveTooltip(e);
+}
+function moveTooltip(e) {
+  let x = e.clientX + 14, y = e.clientY + 16;
+  const r = tooltip.getBoundingClientRect();
+  if (x + r.width > window.innerWidth - 8) x = e.clientX - r.width - 14;
+  if (y + r.height > window.innerHeight - 8) y = e.clientY - r.height - 16;
+  tooltip.style.left = x + "px";
+  tooltip.style.top = y + "px";
+}
+function onPinLeave() {
+  tooltip.style.display = "none";
+  Object.keys(pinEls).forEach(function (k) { pinEls[k].classList.remove("samenet"); });
+}
+
+/* ============================================================
+   IDEAL SOLUTION — auto-route every spec'd connection.
+   Orthogonal grid A* with a turn penalty: clean straight runs,
+   carried through the gaps between components, never across them.
+   ============================================================ */
+function showIdealSolution() {
+  const CELL = 10, INF = 6, STUB = 22, TURN = 12;
+  const W = Math.max(1, Math.ceil(stageW / CELL));
+  const H = Math.max(1, Math.ceil(stageH / CELL));
+
+  // obstacle grid — a cell is blocked when its centre falls inside any
+  // component box, inflated by INF so routed wires never run flush
+  const blocked = new Uint8Array(W * H);
+  for (let gy = 0; gy < H; gy++) {
+    for (let gx = 0; gx < W; gx++) {
+      const cx = (gx + 0.5) * CELL, cy = (gy + 0.5) * CELL;
+      for (let k = 0; k < COMPONENTS.length; k++) {
+        const c = COMPONENTS[k];
+        if (cx >= c.x - INF && cx <= c.x + c.w + INF &&
+            cy >= c.y - INF && cy <= c.y + c.h + INF) { blocked[gy * W + gx] = 1; break; }
+      }
+    }
+  }
+  function cellFree(gx, gy) {
+    return gx >= 0 && gy >= 0 && gx < W && gy < H && !blocked[gy * W + gx];
+  }
+
+  const OUT = { top: [0, -1], bottom: [0, 1], left: [-1, 0], right: [1, 0] };
+  const DIR_OF = { right: 0, bottom: 1, left: 2, top: 3 };
+  const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
+
+  // minimal binary heap keyed on .f
+  function Heap() { this.a = []; }
+  Heap.prototype.push = function (it) {
+    const a = this.a; a.push(it); let i = a.length - 1;
+    while (i > 0) { const p = (i - 1) >> 1; if (a[p].f <= a[i].f) break;
+      const t = a[p]; a[p] = a[i]; a[i] = t; i = p; }
+  };
+  Heap.prototype.pop = function () {
+    const a = this.a, top = a[0], last = a.pop();
+    if (a.length) {
+      a[0] = last; let i = 0; const n = a.length;
+      for (;;) { let l = 2 * i + 1, r = l + 1, m = i;
+        if (l < n && a[l].f < a[m].f) m = l;
+        if (r < n && a[r].f < a[m].f) m = r;
+        if (m === i) break; const t = a[m]; a[m] = a[i]; a[i] = t; i = m; }
+    }
+    return top;
+  };
+
+  // A* over (cell, incoming-direction); the turn penalty keeps runs straight
+  function route(sgx, sgy, sdir, ggx, ggy) {
+    const N = W * H;
+    const best = new Int32Array(N * 5).fill(0x7fffffff);
+    const prev = new Int32Array(N * 5).fill(-1);
+    const heap = new Heap();
+    const start = (sgy * W + sgx) * 5 + sdir;
+    best[start] = 0;
+    heap.push({ f: Math.abs(sgx - ggx) + Math.abs(sgy - ggy), g: 0, node: start });
+    let goal = -1;
+    while (heap.a.length) {
+      const cur = heap.pop();
+      if (cur.g > best[cur.node]) continue;
+      const dir = cur.node % 5, cell = (cur.node - dir) / 5;
+      const cgx = cell % W, cgy = (cell - cgx) / W;
+      if (cgx === ggx && cgy === ggy) { goal = cur.node; break; }
+      for (let d = 0; d < 4; d++) {
+        const nx = cgx + DX[d], ny = cgy + DY[d];
+        if (!cellFree(nx, ny)) continue;
+        const ng = cur.g + 1 + ((dir !== 4 && dir !== d) ? TURN : 0);
+        const nn = (ny * W + nx) * 5 + d;
+        if (ng < best[nn]) {
+          best[nn] = ng; prev[nn] = cur.node;
+          heap.push({ f: ng + Math.abs(nx - ggx) + Math.abs(ny - ggy), g: ng, node: nn });
+        }
+      }
+    }
+    if (goal < 0) return null;
+    const cells = [];
+    for (let n = goal; n >= 0; n = prev[n]) {
+      const dir = n % 5, cell = (n - dir) / 5, cgx = cell % W;
+      cells.push([cgx, (cell - cgx) / W]);
+    }
+    return cells.reverse();
+  }
+
+  // drop collinear interior points so straight runs become single segments
+  function simplify(pts) {
+    if (pts.length < 3) return pts.slice();
+    const out = [pts[0]];
+    for (let i = 1; i < pts.length - 1; i++) {
+      const a = out[out.length - 1], b = pts[i], c = pts[i + 1];
+      if (Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) > 0.5) out.push(b);
+    }
+    out.push(pts[pts.length - 1]);
+    return out;
+  }
+
+  // nets → their pins, for choosing terminals on the multi-pin rails
+  const NET_PINS = {};
+  Object.keys(PINS).forEach(function (id) {
+    const n = netOf(id); (NET_PINS[n] = NET_PINS[n] || []).push(id);
+  });
+  const used = {};
+  function pickPin(net, ref) {
+    let cands = NET_PINS[net].filter(function (id) { return !used[id]; });
+    if (!cands.length) cands = NET_PINS[net];
+    let bestId = cands[0], bestD = Infinity;
+    cands.forEach(function (id) {
+      const p = pinPos[id], d = (p.x - ref.x) * (p.x - ref.x) + (p.y - ref.y) * (p.y - ref.y);
+      if (d < bestD) { bestD = d; bestId = id; }
+    });
+    used[bestId] = true;
+    return bestId;
+  }
+  function centroid(ids) {
+    let x = 0, y = 0;
+    ids.forEach(function (id) { x += pinPos[id].x; y += pinPos[id].y; });
+    return { x: x / ids.length, y: y / ids.length };
+  }
+
+  // route a single wire pin-to-pin
+  function wireBetween(pinA, pinB) {
+    const pa = pinPos[pinA], pb = pinPos[pinB];
+    const oa = OUT[PINS[pinA].edge] || [0, -1], ob = OUT[PINS[pinB].edge] || [0, -1];
+    function stub(p, o) {
+      let sx = p.x + o[0] * STUB, sy = p.y + o[1] * STUB;
+      let gx = Math.floor(sx / CELL), gy = Math.floor(sy / CELL);
+      for (let t = 0; t < 10 && !cellFree(gx, gy); t++) {
+        sx += o[0] * CELL; sy += o[1] * CELL;
+        gx = Math.floor(sx / CELL); gy = Math.floor(sy / CELL);
+      }
+      return [Math.max(0, Math.min(W - 1, gx)), Math.max(0, Math.min(H - 1, gy))];
+    }
+    const sa = stub(pa, oa), sb = stub(pb, ob);
+    const sdir = DIR_OF[PINS[pinA].edge];
+    const cells = route(sa[0], sa[1], sdir == null ? 4 : sdir, sb[0], sb[1]);
+    let pts;
+    if (cells) {
+      pts = [pa].concat(cells.map(function (c) {
+        return { x: (c[0] + 0.5) * CELL, y: (c[1] + 0.5) * CELL };
+      }), [pb]);
+    } else {
+      pts = [pa, pb];
+    }
+    return simplify(pts);
+  }
+
+  // one connection per spec'd target
+  const out = [];
+  TARGETS.forEach(function (t, i) {
+    const aP = NET_PINS[t.a] || [], bP = NET_PINS[t.b] || [];
+    if (!aP.length || !bP.length) return;
+    let pinA, pinB;
+    if (aP.length > 1 && bP.length > 1) {
+      pinA = pickPin(t.a, centroid(bP));
+      pinB = pickPin(t.b, pinPos[pinA]);
+    } else if (aP.length > 1) {
+      pinB = bP[0]; pinA = pickPin(t.a, pinPos[pinB]);
+    } else if (bP.length > 1) {
+      pinA = aP[0]; pinB = pickPin(t.b, pinPos[pinA]);
+    } else {
+      pinA = aP[0]; pinB = bP[0];
+    }
+    out.push({
+      id: "ideal" + i, a: pinA, b: pinB,
+      gauge: t.gauge, color: t.colors[0],
+      points: wireBetween(pinA, pinB)
+    });
+  });
+
+  connections = out;
+  selectedId = null;
+  save();
+  refresh();
+  toast("Ideal solution drawn — " + out.length + " of " + TARGETS.length + " connections routed.");
+}
+
+/* ============================================================
+   TOOLBAR
+   ============================================================ */
+function renderToolbar() {
+  toolbar.innerHTML = "";
+
+  const gGroup = document.createElement("div");
+  gGroup.className = "tool-group";
+  gGroup.innerHTML = '<span class="tool-label">Gauge</span>';
+  Object.keys(GAUGES).forEach(function (g) {
+    const btn = document.createElement("button");
+    btn.className = "gauge-btn" + (g === curGauge ? " sel" : "");
+    btn.innerHTML = '<span class="gline" style="height:' + GAUGES[g].w + 'px"></span><span>' + GAUGES[g].label + "</span>";
+    btn.addEventListener("click", function () { curGauge = g; renderToolbar(); });
+    gGroup.appendChild(btn);
+  });
+  toolbar.appendChild(gGroup);
+
+  const cGroup = document.createElement("div");
+  cGroup.className = "tool-group";
+  cGroup.innerHTML = '<span class="tool-label">Colour</span>';
+  Object.keys(COLORS).forEach(function (col) {
+    const btn = document.createElement("button");
+    btn.className = "color-btn" + (col === curColor ? " sel" : "");
+    btn.style.background = COLORS[col].hex;
+    btn.innerHTML = '<span class="cname">' + COLORS[col].name + "</span>";
+    btn.addEventListener("click", function () { curColor = col; renderToolbar(); });
+    cGroup.appendChild(btn);
+  });
+  toolbar.appendChild(cGroup);
+
+  const hint = document.createElement("div");
+  hint.className = "hint";
+  hint.innerHTML = "Press and hold on any pin, drag a wire — squiggle if you like — and release on the target pin.";
+  toolbar.appendChild(hint);
+
+  const clearBtn = document.createElement("button");
+  clearBtn.className = "btn";
+  clearBtn.textContent = "Clear all wires";
+  clearBtn.addEventListener("click", function () {
+    if (!connections.length) return;
+    if (confirm("Remove all " + connections.length + " connections?")) {
+      connections = []; selectedId = null; save(); refresh();
+    }
+  });
+  toolbar.appendChild(clearBtn);
+
+  const idealBtn = document.createElement("button");
+  idealBtn.className = "btn";
+  idealBtn.textContent = "Show ideal solution";
+  idealBtn.addEventListener("click", function () {
+    if (connections.length &&
+        !confirm("Replace the current " + connections.length + " wire(s) with the ideal solution?")) return;
+    showIdealSolution();
+  });
+  toolbar.appendChild(idealBtn);
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+let toastTimer = null;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.style.opacity = "1";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { toastEl.style.opacity = "0"; }, 2200);
+}
+
+/* ============================================================
+   FREEHAND DRAWING
+   ============================================================ */
+let draw = null;          // {startPin, points:[{x,y}]}
+let hotPin = null;        // pin currently under the cursor mid-drag
+
+function stageCoords(e) {
+  const r = stage.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+/* quadratic-midpoint smoothing — keeps every squiggle, just no jagged pixels */
+function pathD(pts) {
+  if (pts.length < 2) return "";
+  if (pts.length === 2) return "M" + pts[0].x + " " + pts[0].y + " L" + pts[1].x + " " + pts[1].y;
+  let d = "M" + pts[0].x + " " + pts[0].y;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const mx = (pts[i].x + pts[i + 1].x) / 2, my = (pts[i].y + pts[i + 1].y) / 2;
+    d += " Q" + pts[i].x + " " + pts[i].y + " " + mx + " " + my;
+  }
+  const n = pts.length - 1;
+  return d + " L" + pts[n].x + " " + pts[n].y;
+}
+
+const SVGNS = "http://www.w3.org/2000/svg";
+function svgPath() { return document.createElementNS(SVGNS, "path"); }
+
+const draftEl = svgPath();
+draftEl.setAttribute("fill", "none");
+draftEl.setAttribute("stroke-linecap", "round");
+draftEl.setAttribute("stroke-linejoin", "round");
+draftEl.setAttribute("stroke-dasharray", "1 9");
+draftEl.style.display = "none";
+wiresEl.appendChild(draftEl);
+
+stage.addEventListener("pointerdown", function (e) {
+  if (draw) return;
+  const pinEl = e.target.closest && e.target.closest(".pin");
+  if (!pinEl) return;
+  e.preventDefault();
+  const startId = pinEl.dataset.pinid;
+  draw = { startPin: startId, points: [{ x: pinPos[startId].x, y: pinPos[startId].y }] };
+  draftEl.setAttribute("stroke", COLORS[curColor].hex);
+  draftEl.setAttribute("stroke-width", GAUGES[curGauge].w);
+  draftEl.setAttribute("d", "");
+  draftEl.style.display = "";
+  wiresEl.appendChild(draftEl);     // keep the draft line on top
+  onPinLeave();
+  window.addEventListener("pointermove", onDrawMove);
+  window.addEventListener("pointerup", onDrawUp);
+});
+
+function onDrawMove(e) {
+  if (!draw) return;
+  const pt = stageCoords(e);
+  const last = draw.points[draw.points.length - 1];
+  if (dist(pt, last) > 4) draw.points.push(pt);
+  draftEl.setAttribute("d", pathD(draw.points.concat([pt])));
+
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const pinEl = under && under.closest ? under.closest(".pin") : null;
+  const id = pinEl ? pinEl.dataset.pinid : null;
+  if (id !== hotPin) {
+    if (hotPin && pinEls[hotPin]) pinEls[hotPin].classList.remove("hot");
+    hotPin = (id && id !== draw.startPin) ? id : null;
+    if (hotPin) pinEls[hotPin].classList.add("hot");
+  }
+}
+
+function onDrawUp(e) {
+  window.removeEventListener("pointermove", onDrawMove);
+  window.removeEventListener("pointerup", onDrawUp);
+  draftEl.style.display = "none";
+  if (hotPin && pinEls[hotPin]) pinEls[hotPin].classList.remove("hot");
+
+  const d = draw; draw = null;
+  const endId = hotPin; hotPin = null;
+  if (!d) return;
+
+  if (!endId) { toast("Wire discarded — it has to end on a pin."); return; }
+  if (endId === d.startPin) { toast("Wire discarded — start and end are the same pin."); return; }
+
+  const pts = d.points.slice();
+  pts[0] = { x: pinPos[d.startPin].x, y: pinPos[d.startPin].y };
+  pts.push({ x: pinPos[endId].x, y: pinPos[endId].y });
+
+  connections.push({
+    id: "c" + (connSeq++),
+    a: d.startPin, b: endId,
+    gauge: curGauge, color: curColor,
+    points: pts
+  });
+  selectedId = connections[connections.length - 1].id;
+  save();
+  refresh();
+}
+
+window.addEventListener("keydown", function (e) {
+  if (e.key === "Escape" && draw) {
+    window.removeEventListener("pointermove", onDrawMove);
+    window.removeEventListener("pointerup", onDrawUp);
+    draftEl.style.display = "none";
+    if (hotPin && pinEls[hotPin]) pinEls[hotPin].classList.remove("hot");
+    draw = null; hotPin = null;
+  }
+  if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
+    removeConnection(selectedId);
+  }
+});
+
+/* ============================================================
+   RENDER: wires
+   ============================================================ */
+function renderWires() {
+  Array.prototype.slice.call(wiresEl.querySelectorAll("path.wire,path.wire-glow"))
+    .forEach(function (n) { n.remove(); });
+
+  const ordered = connections.slice().sort(function (x, y) {
+    const xs = (x.id === selectedId) ? 2 : (x.id === hoverConnId ? 1 : 0);
+    const ys = (y.id === selectedId) ? 2 : (y.id === hoverConnId ? 1 : 0);
+    return xs - ys;     // selected / hovered drawn last (on top)
+  });
+
+  ordered.forEach(function (c) {
+    const active = (c.id === selectedId) || (c.id === hoverConnId);
+    if (c.id === selectedId) {
+      const glow = svgPath();
+      glow.setAttribute("class", "wire-glow");
+      glow.setAttribute("d", pathD(c.points));
+      glow.setAttribute("fill", "none");
+      glow.setAttribute("stroke", COLORS[c.color].hex);
+      glow.setAttribute("stroke-opacity", "0.22");
+      glow.setAttribute("stroke-width", GAUGES[c.gauge].w + 9);
+      glow.setAttribute("stroke-linecap", "round");
+      glow.setAttribute("stroke-linejoin", "round");
+      wiresEl.appendChild(glow);
+    }
+    const path = svgPath();
+    path.setAttribute("class", "wire");
+    path.setAttribute("d", pathD(c.points));
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", active ? COLORS[c.color].hex : GRAY);
+    path.setAttribute("stroke-width", GAUGES[c.gauge].w + (c.id === selectedId ? 1 : 0));
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-linejoin", "round");
+    path.setAttribute("stroke-opacity", active ? "1" : "0.85");
+    wiresEl.appendChild(path);
+  });
+}
+
+/* endpoint pins of the selected connection get a halo */
+function renderEndpointHighlights() {
+  Object.keys(pinEls).forEach(function (k) { pinEls[k].classList.remove("endpoint"); });
+  const c = connections.find(function (x) { return x.id === selectedId; });
+  if (c) {
+    if (pinEls[c.a]) pinEls[c.a].classList.add("endpoint");
+    if (pinEls[c.b]) pinEls[c.b].classList.add("endpoint");
+  }
+}
+
+/* ============================================================
+   EVALUATION — compare drawn connections against the build spec
+   ============================================================ */
+function sameNets(conn, target) {
+  const ca = netOf(conn.a), cb = netOf(conn.b);
+  return (ca === target.a && cb === target.b) || (ca === target.b && cb === target.a);
+}
+function colourLabel(colors) { return colors.join(" or "); }
+
+function evaluate() {
+  const used = {};
+  connections.forEach(function (c) { c.status = "extra"; c.target = null; });
+  const result = TARGETS.map(function (t) { return { t: t, satisfiedBy: null, wrong: [] }; });
+
+  // pass 1 — exact match (endpoints + gauge + colour)
+  result.forEach(function (r) {
+    for (let i = 0; i < connections.length; i++) {
+      const c = connections[i];
+      if (used[c.id]) continue;
+      if (!sameNets(c, r.t)) continue;
+      if (c.gauge === r.t.gauge && r.t.colors.indexOf(c.color) !== -1) {
+        r.satisfiedBy = c; used[c.id] = true;
+        c.status = "correct"; c.target = r.t;
+        break;
+      }
+    }
+  });
+
+  // pass 2 — right endpoints, wrong gauge/colour: pin to an unmet target
+  connections.forEach(function (c) {
+    if (used[c.id]) return;
+    const r = result.find(function (x) { return !x.satisfiedBy && sameNets(c, x.t); });
+    if (r) {
+      c.status = "wrongspec"; c.target = r.t;
+      r.wrong.push(c); used[c.id] = true;
+    }
+  });
+
+  // pass 3 — leftovers: duplicate of a satisfied target, or not in the spec
+  connections.forEach(function (c) {
+    if (used[c.id]) return;
+    const t = TARGETS.find(function (x) { return sameNets(c, x); });
+    c.status = t ? "duplicate" : "extra";
+    c.target = t || null;
+  });
+
+  const satisfied = result.filter(function (r) { return r.satisfiedBy; }).length;
+  const problems = connections.filter(function (c) { return c.status !== "correct"; }).length;
+  let state = "progress";
+  if (satisfied === TARGETS.length) state = (problems === 0) ? "done" : "near";
+
+  return { result: result, satisfied: satisfied, problems: problems, state: state };
+}
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+function el(tag, cls, html) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (html != null) n.innerHTML = html;
+  return n;
+}
+
+function renderSidebar(ev) {
+  sidebar.innerHTML = "";
+
+  /* ---- status card ---- */
+  const card = el("div", "status-card s-" + ev.state);
+  const stateText = ev.state === "done" ? "Build complete ✓"
+                  : ev.state === "near" ? "All connections present"
+                  : "Build in progress";
+  card.appendChild(el("div", "status-state", stateText));
+  const sub = ev.state === "done" ? "Every spec'd wire is in place with the correct gauge and colour."
+            : ev.state === "near" ? "All 26 connections are made — but some drawn wires need review below."
+            : "Draw the 26 spec'd connections. The build re-checks itself after every wire.";
+  card.appendChild(el("div", "status-sub", sub));
+
+  const track = el("div", "progress-track");
+  const fill = el("div", "progress-fill");
+  fill.style.width = (ev.satisfied / TARGETS.length * 100) + "%";
+  track.appendChild(fill);
+  card.appendChild(track);
+
+  const counts = el("div", "status-counts");
+  counts.appendChild(el("div", "cnt-ok", "<b>" + ev.satisfied + "</b> / " + TARGETS.length + " connections"));
+  counts.appendChild(el("div", "cnt-prob", "<b>" + ev.problems + "</b> to review"));
+  card.appendChild(counts);
+  sidebar.appendChild(card);
+
+  renderConnPanel();
+  renderChecklist(ev);
+}
+
+function renderConnPanel() {
+  const panel = el("div", "panel");
+  panel.appendChild(el("h2", null, "Connections drawn (" + connections.length + ")"));
+
+  if (!connections.length) {
+    panel.appendChild(el("div", "empty-note", "No wires yet. Pick a gauge and colour above, then drag from pin to pin."));
+  }
+
+  const NOTE = {
+    correct:   null,
+    wrongspec: function (c) {
+      return ['<span class="conn-note note-bad">Right two points — spec is ',
+        c.target.gauge, " AWG ", colourLabel(c.target.colors),
+        ", you drew ", c.gauge, " AWG ", c.color, ".</span>"].join("");
+    },
+    duplicate: function () { return '<span class="conn-note note-warn">Duplicate — this connection is already made correctly.</span>'; },
+    extra:     function () { return '<span class="conn-note note-warn">Not part of the backplate build spec.</span>'; }
+  };
+
+  connections.forEach(function (c) {
+    const row = el("div", "conn-row" + (c.id === selectedId ? " sel" : ""));
+    row.dataset.id = c.id;
+
+    const line1 = el("div", "conn-line1");
+    line1.appendChild(el("span", "conn-dot d-" + c.status));
+    const sw = el("span", "conn-swatch");
+    sw.style.background = COLORS[c.color].hex;
+    line1.appendChild(sw);
+    line1.appendChild(el("span", "conn-text", pinName(c.a) + "  ↔  " + pinName(c.b)));
+    line1.appendChild(el("span", "conn-gauge", GAUGES[c.gauge].label));
+    const x = el("button", "conn-x", "✕");
+    x.title = "Remove this connection";
+    x.addEventListener("click", function (e) { e.stopPropagation(); removeConnection(c.id); });
+    line1.appendChild(x);
+    row.appendChild(line1);
+
+    if (NOTE[c.status]) row.insertAdjacentHTML("beforeend", NOTE[c.status](c));
+
+    row.addEventListener("click", function () { selectConn(c.id); });
+    row.addEventListener("mouseenter", function () { hoverConnId = c.id; renderWires(); });
+    row.addEventListener("mouseleave", function () { hoverConnId = null; renderWires(); });
+    panel.appendChild(row);
+  });
+
+  sidebar.appendChild(panel);
+}
+
+function renderChecklist(ev) {
+  const panel = el("div", "panel");
+  panel.appendChild(el("h2", null, "Build checklist — wiring flow"));
+
+  const byStep = {};
+  ev.result.forEach(function (r) {
+    (byStep[r.t.step] = byStep[r.t.step] || []).push(r);
+  });
+
+  Object.keys(STEP_TITLES).forEach(function (step) {
+    const rows = byStep[step];
+    if (!rows) return;
+    const group = el("div", "ck-group");
+    group.appendChild(el("div", "ck-group-h", STEP_TITLES[step]));
+
+    rows.forEach(function (r) {
+      const done = !!r.satisfiedBy;
+      const bad = !done && r.wrong.length > 0;
+      const row = el("div", "ck-row");
+      row.appendChild(el("span", "ck-mark " + (done ? "m-done" : bad ? "m-bad" : "m-todo"),
+        done ? "✓" : bad ? "⚠" : "○"));
+
+      const body = el("div", "ck-body");
+      body.appendChild(el("div", null, r.t.desc));
+      if (bad) {
+        body.appendChild(el("div", "ck-prob",
+          "Drawn " + r.wrong[0].gauge + " AWG " + r.wrong[0].color +
+          " — needs " + r.t.gauge + " AWG " + colourLabel(r.t.colors) + "."));
+      } else {
+        body.appendChild(el("div", "ck-spec", r.t.gauge + " AWG · " + colourLabel(r.t.colors)));
+      }
+      row.appendChild(body);
+
+      row.addEventListener("mouseenter", function () { highlightNets(r.t.a, r.t.b); });
+      row.addEventListener("mouseleave", function () { clearNetHighlight(); });
+      group.appendChild(row);
+    });
+    panel.appendChild(group);
+  });
+
+  panel.appendChild(el("div", "ck-foot",
+    "Steps 14 & 15 are not numbered rows in the wiring-flow table — they are derived from the " +
+    "SIGNAL block's rail spec, which lists every device ground as a landing on that rail. Step 14 is " +
+    "the ESP32's ground reference. Step 15 lands the opto-isolated MOSFET boards' signal grounds — " +
+    "GND1–GND4 jumpered together per board. Each board's DC− power ground is a separate net and goes " +
+    "to the POWER GND rail in step 5; the two only meet at the star bridge (step 6)."));
+
+  const legend = el("div", "legend-row");
+  legend.innerHTML =
+    '<span><span class="lg-line" style="height:8px;background:#888"></span>14</span>' +
+    '<span><span class="lg-line" style="height:5px;background:#888"></span>18</span>' +
+    '<span><span class="lg-line" style="height:3px;background:#888"></span>22 AWG</span>' +
+    '<span><span class="lg-line" style="height:4px;background:' + GRAY + '"></span>idle wire</span>' +
+    "<span>selected wire shows its colour</span>";
+  panel.appendChild(legend);
+
+  sidebar.appendChild(panel);
+}
+
+function highlightNets(netA, netB) {
+  Object.keys(PINS).forEach(function (k) {
+    if (netOf(k) === netA || netOf(k) === netB) {
+      if (pinEls[k]) pinEls[k].classList.add("hot");
+    }
+  });
+}
+function clearNetHighlight() {
+  Object.keys(pinEls).forEach(function (k) { pinEls[k].classList.remove("hot"); });
+}
+
+/* ============================================================
+   ACTIONS
+   ============================================================ */
+function selectConn(id) {
+  selectedId = (selectedId === id) ? null : id;
+  save();
+  refresh();
+}
+function removeConnection(id) {
+  connections = connections.filter(function (c) { return c.id !== id; });
+  if (selectedId === id) selectedId = null;
+  save();
+  refresh();
+}
+
+/* ============================================================
+   PERSISTENCE
+   ============================================================ */
+function save() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({
+      seq: connSeq,
+      selected: selectedId,
+      gauge: curGauge,
+      color: curColor,
+      connections: connections.map(function (c) {
+        return { id: c.id, a: c.a, b: c.b, gauge: c.gauge, color: c.color, points: c.points };
+      })
+    }));
+  } catch (e) { /* storage unavailable — run in-memory */ }
+}
+function load() {
+  let data;
+  try { data = JSON.parse(localStorage.getItem(LS_KEY)); } catch (e) { data = null; }
+  if (!data) return;
+  if (GAUGES[data.gauge]) curGauge = data.gauge;
+  if (COLORS[data.color]) curColor = data.color;
+  connSeq = data.seq || 1;
+  selectedId = data.selected || null;
+  (data.connections || []).forEach(function (c) {
+    // drop anything that references pins/values no longer in the model
+    if (!PINS[c.a] || !PINS[c.b]) return;
+    if (!GAUGES[c.gauge] || !COLORS[c.color]) return;
+    if (!Array.isArray(c.points) || c.points.length < 2) return;
+    // if the layout shifted since this wire was drawn, re-anchor it to a straight
+    // run between the pins' current positions so saved wiring survives a re-layout
+    let points = c.points;
+    const pa = pinPos[c.a], pb = pinPos[c.b];
+    const first = points[0], last = points[points.length - 1];
+    if (pa && pb && (Math.hypot(first.x - pa.x, first.y - pa.y) > 2 ||
+                     Math.hypot(last.x - pb.x, last.y - pb.y) > 2)) {
+      points = [{ x: pa.x, y: pa.y }, { x: pb.x, y: pb.y }];
+    }
+    connections.push({ id: c.id, a: c.a, b: c.b, gauge: c.gauge, color: c.color, points: points });
+  });
+  if (selectedId && !connections.some(function (c) { return c.id === selectedId; })) selectedId = null;
+}
+
+/* ============================================================
+   REFRESH — re-evaluate and repaint everything
+   ============================================================ */
+function refresh() {
+  const ev = evaluate();
+  renderWires();
+  renderEndpointHighlights();
+  renderSidebar(ev);
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+layoutStage();
+renderDiagram();
+load();
+renderToolbar();
+refresh();
+</script>
+</body>
+</html>
